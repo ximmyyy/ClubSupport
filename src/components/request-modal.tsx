@@ -9,7 +9,7 @@ import { fmtTime, formatDate, parseTime, WEEKDAYS, weekdayOf } from "@/lib/time"
 import type { ChangeRequest } from "@/lib/types";
 import { SECTION_OPTIONS } from "./booking-modal";
 import { useToast } from "./toast";
-import { Button, FormField, Input, Modal, Segmented, Select } from "./ui";
+import { Button, FormField, Input, Modal, Segmented, Select, Textarea } from "./ui";
 
 export type RequestDraft = Pick<ChangeRequest, "teamId" | "bookingId" | "matchId" | "scope" | "date" | "fieldId" | "sections" | "start" | "end">;
 
@@ -111,16 +111,10 @@ function RequestForm({ initial, onClose }: { initial: RequestDraft; onClose: () 
           </FormField>
         )}
         <FormField label="Toelichting voor de wedstrijdsecretaris">
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            placeholder="Bijv. schoolreisje, bekerwedstrijd, keeperstraining…"
-            className="w-full rounded-lg border border-stone-300 p-3 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
-          />
+          <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Bijvoorbeeld: schoolreisje, bekerwedstrijd, keeperstraining…" />
         </FormField>
         {unchanged ? (
-          <p className="text-sm text-stone-500">Kies een ander veld, veldgedeelte of tijdstip om een verzoek te kunnen versturen.</p>
+          <p className="text-sm text-stone-600">Kies een ander veld, veldgedeelte of tijdstip om een verzoek te kunnen versturen.</p>
         ) : conflicts.length ? (
           <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <p className="flex items-center gap-1.5 font-medium"><AlertTriangle size={15} /> Let op, dit botst met de planning:</p>

@@ -206,10 +206,10 @@ export function StoreProvider({ children, fallback, source }: { children: React.
 
   if (loadError) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6 text-center">
+      <div className="flex min-h-dvh items-center justify-center p-6 text-center">
         <div>
           <p className="font-semibold text-stone-900">De clubgegevens konden niet worden geladen.</p>
-          <p className="mt-1 text-sm text-stone-500">{loadError}</p>
+          <p className="mt-1 text-sm text-stone-600">{loadError}</p>
           <button className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white" onClick={() => window.location.reload()}>
             Opnieuw proberen
           </button>

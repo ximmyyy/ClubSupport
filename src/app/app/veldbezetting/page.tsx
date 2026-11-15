@@ -1,8 +1,9 @@
 "use client";
 
 import {
-  AlertTriangle, Ban, CloudRain, Lightbulb, LightbulbOff, Map as MapIcon, Pause, Play, Plus, Repeat, Rows3, Trophy, Wand2,
+  AlertTriangle, Ban, ChevronRight, CloudRain, Hourglass, Lightbulb, LightbulbOff, List, Map as MapIcon, Pause, Play, Plus, Repeat, Rows3, Settings, Trophy, Wand2,
 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useSelectedDate } from "@/components/app-shell";
 import { BookingDraft, BookingModal } from "@/components/booking-modal";
@@ -10,14 +11,14 @@ import { MatchModal } from "@/components/match-modal";
 import { RequestDraft, RequestModal } from "@/components/request-modal";
 import { Pitch } from "@/components/pitch";
 import { useToast } from "@/components/toast";
-import { Badge, Button, Card, cn, DateNavigator, FormField, Input, Modal, PageHeader, Segmented, Select } from "@/components/ui";
+import { Badge, Button, Card, Checkbox, cn, DateNavigator, EmptyState, FormField, Input, Modal, PageHeader, Segmented, Select } from "@/components/ui";
 import { CATEGORY_META, CATEGORIES, SECTION_LABELS } from "@/lib/meta";
 import {
   autoPlanMatchFields, FieldSlot, fieldSlotsForDate, findFieldConflicts, isFieldClosed, needForSections, sectionsForLane,
 } from "@/lib/planning";
 import { uid } from "@/lib/seed";
 import { useLookups, useStore } from "@/lib/store";
-import { addDays, fmtTime, nowMinutes, startOfWeek, todayISO, WEEKDAYS_SHORT, weekdayOf } from "@/lib/time";
+import { addDays, fmtTime, nowMinutes, startOfWeek, todayISO, WEEKDAYS, WEEKDAYS_SHORT, weekdayOf } from "@/lib/time";
 import type { ChangeRequest, Match } from "@/lib/types";
 
 const PX = 1.25; // pixels per minute
@@ -51,7 +52,10 @@ export default function VeldbezettingPage() {
     teamId: slot.teamId!, bookingId: slot.source === "booking" ? slot.id : undefined, matchId: slot.source === "match" ? slot.id : undefined,
     scope: "eenmalig", date, fieldId: p?.fieldId ?? slot.fieldId, sections: p?.sections ?? slot.sections, start: p?.start ?? slot.start, end: p?.end ?? slot.end,
   });
-  const [view, setView] = useState<"tijdlijn" | "kaart">("tijdlijn");
+  // Phones and tablets start with the easy-to-read list; large screens with the timeline.
+  const [view, setView] = useState<"lijst" | "tijdlijn" | "kaart">(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? "lijst" : "tijdlijn",
+  );
   const [draft, setDraft] = useState<BookingDraft | null>(null);
   const [editMatch, setEditMatch] = useState<Partial<Match> | null>(null);
   const [closureOpen, setClosureOpen] = useState(false);
@@ -119,10 +123,12 @@ export default function VeldbezettingPage() {
         title="Veldbezetting"
         description={
           canEdit
-            ? "Sleep blokken om te verplaatsen, klik op een lege plek om te reserveren. Velden zijn opgedeeld in kwarten A–D."
+            ? view === "tijdlijn"
+              ? "Klik op een blok om het te wijzigen of sleep het naar een andere plek. Klik op een lege plek om te reserveren. Elk veld is verdeeld in vier kwarten (A t/m D)."
+              : "Wie staat waar en wanneer. Tik op een regel om die te wijzigen."
             : trainerOnly
-              ? "Klik op een training van je team of sleep het blok naar een andere plek om een wijziging aan te vragen. Klik op een lege plek voor een extra training."
-              : "Overzicht van alle velden. Velden zijn opgedeeld in kwarten A–D."
+              ? "Tik op een training van je eigen team om een wijziging aan te vragen bij de wedstrijdsecretaris."
+              : "Wie staat waar en wanneer."
         }
         actions={
           <>
@@ -131,8 +137,9 @@ export default function VeldbezettingPage() {
               value={view}
               onChange={setView}
               options={[
-                { value: "tijdlijn", label: <span className="flex items-center gap-1.5"><Rows3 size={15} /> Tijdlijn</span> },
-                { value: "kaart", label: <span className="flex items-center gap-1.5"><MapIcon size={15} /> Veldkaart</span> },
+                { value: "lijst", label: <span className="flex items-center gap-1.5"><List size={16} /> Lijst</span> },
+                { value: "tijdlijn", label: <span className="flex items-center gap-1.5"><Rows3 size={16} /> Tijdlijn</span> },
+                { value: "kaart", label: <span className="flex items-center gap-1.5"><MapIcon size={16} /> Veldkaart</span> },
               ]}
             />
           </>
@@ -140,7 +147,7 @@ export default function VeldbezettingPage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 overflow-x-auto rounded-xl bg-white p-1 shadow-sm ring-1 ring-stone-200">
+        <div className="flex w-full gap-1 overflow-x-auto rounded-xl bg-white p-1 shadow-sm ring-1 ring-stone-200 sm:w-auto">
           {WEEKDAYS_SHORT.map((wd, i) => {
             const d = addDays(weekStart, i);
             const count = fieldSlotsForDate(data, d).length;
@@ -148,19 +155,21 @@ export default function VeldbezettingPage() {
               <button
                 key={wd}
                 onClick={() => setDate(d)}
+                aria-label={`${WEEKDAYS[i]}, ${count} activiteiten`}
+                aria-pressed={d === date}
                 className={cn(
-                  "flex min-w-12 flex-col items-center rounded-lg px-2.5 py-1 text-xs font-medium",
+                  "flex min-h-12 min-w-11 flex-1 flex-col items-center justify-center rounded-lg px-2 text-sm font-semibold sm:min-w-12 sm:flex-none",
                   d === date ? "bg-brand-600 text-white" : "text-stone-600 hover:bg-stone-100",
                 )}
               >
                 <span className="uppercase">{wd}</span>
-                <span className={cn("tabular-nums", d === date ? "text-brand-100" : "text-stone-400")}>{count || "–"}</span>
+                <span className={cn("text-xs font-normal tabular-nums", d === date ? "text-brand-100" : "text-stone-500")}>{count || "–"}</span>
               </button>
             );
           })}
         </div>
         <div className="flex flex-wrap gap-2">
-          {trainerOnly && me.teamIds.length > 0 && (
+          {trainerOnly && me.teamIds.length > 0 && view !== "lijst" && (
             <Button
               variant="primary"
               onClick={() => setRequestDraft({ teamId: me.teamIds[0], scope: "eenmalig", date, fieldId: data.fields[0]?.id ?? "", sections: [0, 1], start: 18 * 60, end: 19 * 60 + 30 })}
@@ -173,13 +182,13 @@ export default function VeldbezettingPage() {
             <Button variant="primary" onClick={autoPlan}><Wand2 size={16} /> {unplanned.length} wedstrijd(en) automatisch indelen</Button>
           )}
           {canEdit && <Button onClick={() => setClosureOpen(true)}><CloudRain size={16} /> Veld afkeuren</Button>}
-          {canEdit && <Button
+          {canEdit && view !== "lijst" && <Button
             variant="primary"
             disabled={!data.fields.length}
             title={data.fields.length ? undefined : "Voeg eerst een veld toe bij Instellingen"}
             onClick={() => setDraft({ kind: "training", fieldId: data.fields[0]?.id ?? "", sections: [0, 1], start: weekend ? 600 : 1080, end: weekend ? 660 : 1170, recurring: !weekend })}
           >
-            <Plus size={16} /> Reservering
+            <Plus size={18} /> Reservering toevoegen
           </Button>}
         </div>
       </div>
@@ -193,7 +202,7 @@ export default function VeldbezettingPage() {
                 <button
                   className="text-left underline-offset-2 hover:underline"
                   onClick={() => {
-                    setView("tijdlijn");
+                    if (view === "kaart") setView("lijst");
                     requestAnimationFrame(() =>
                       document.querySelector(`[data-slot="${c.keys[0]}"]`)?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }),
                     );
@@ -207,9 +216,33 @@ export default function VeldbezettingPage() {
         </div>
       )}
 
-      <Legend />
+      {view !== "lijst" && data.fields.length > 0 && <Legend />}
 
-      {view === "tijdlijn" ? (
+      {data.fields.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<Rows3 />}
+            title="Er zijn nog geen velden"
+            action={canEdit && <Link href="/app/instellingen#velden" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand-600 px-4 font-semibold text-white hover:bg-brand-700"><Settings size={18} /> Velden toevoegen</Link>}
+          >
+            Voeg eerst de velden van je sportpark toe bij Instellingen. Daarna kun je hier trainingen en wedstrijden inplannen.
+          </EmptyState>
+        </Card>
+      ) : view === "lijst" ? (
+        <DayList
+          date={date}
+          slots={slots}
+          pending={pending}
+          conflictKeys={conflictKeys}
+          lookups={lookups}
+          onOpen={openSlot}
+          addLabel={canEdit ? "Reservering toevoegen" : trainerOnly && me.teamIds.length ? "Training aanvragen" : null}
+          onAdd={(fieldId, start) => {
+            if (canEdit) setDraft({ kind: "training", fieldId, sections: [0, 1], start, end: start + 90, recurring: !weekend });
+            else setRequestDraft({ teamId: me.teamIds[0], scope: "eenmalig", date, fieldId, sections: [0, 1], start, end: start + 90 });
+          }}
+        />
+      ) : view === "tijdlijn" ? (
         <Timeline
           date={date}
           range={range}
@@ -235,6 +268,99 @@ export default function VeldbezettingPage() {
       <RequestModal draft={requestDraft} onClose={() => setRequestDraft(null)} />
       <ClosureModal open={closureOpen} onClose={() => setClosureOpen(false)} date={date} />
     </>
+  );
+}
+
+function sectionsText(sections: number[]) {
+  if (sections.length >= 4) return "Heel veld";
+  const letters = sections.map((x) => SECTION_LABELS[x]).join("+");
+  return sections.length === 2 ? `Half veld (${letters})` : `Kwart ${letters}`;
+}
+
+/** Plain list of the day per field: the easiest view on a phone. */
+function DayList({ date, slots, pending, conflictKeys, lookups, onOpen, onAdd, addLabel }: {
+  date: string;
+  slots: FieldSlot[];
+  pending: ChangeRequest[];
+  conflictKeys: Set<string>;
+  lookups: ReturnType<typeof useLookups>;
+  onOpen: (s: FieldSlot) => void;
+  onAdd: (fieldId: string, start: number) => void;
+  addLabel: string | null;
+}) {
+  const { data } = useStore();
+  const weekend = weekdayOf(date) >= 6;
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {data.fields.map((f) => {
+        const closed = isFieldClosed(data.closures, f.id, date);
+        const items = slots.filter((s) => s.fieldId === f.id);
+        const requests = pending.filter((r) => r.fieldId === f.id);
+        const nextStart = items.length ? Math.min(22 * 60, Math.max(...items.map((s) => s.end))) : weekend ? 10 * 60 : 18 * 60;
+        return (
+          <Card key={f.id} className="overflow-hidden">
+            <div className="flex items-center justify-between gap-3 border-b border-stone-100 px-4 py-3">
+              <div>
+                <h2 className="text-lg font-bold text-stone-900">{f.name}</h2>
+                <p className="text-sm text-stone-600">{f.surface} · {f.lit ? "met verlichting" : "geen verlichting"}</p>
+              </div>
+              {closed ? (
+                <Badge className="bg-red-100 text-red-800"><Ban size={13} /> Afgekeurd</Badge>
+              ) : (
+                <span className="text-sm text-stone-600">{items.length ? `${items.length} activiteit${items.length > 1 ? "en" : ""}` : "Hele dag vrij"}</span>
+              )}
+            </div>
+            {closed && <p className="bg-red-50 px-4 py-2 text-sm text-red-800">{closed.reason}</p>}
+            <ul className="divide-y divide-stone-100">
+              {items.map((s) => {
+                const colors = slotColors(s, lookups);
+                const conflict = conflictKeys.has(s.key);
+                const what = s.kind === "wedstrijd" ? `Wedstrijd ${s.subtitle ?? ""}` : s.kind === "training" ? `Training${s.recurring ? " (elke week)" : ""}` : s.subtitle ?? "Reservering";
+                return (
+                  <li key={s.key}>
+                    <button data-slot={s.key} onClick={() => onOpen(s)} className={cn("flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-stone-50 active:bg-stone-100", conflict && "bg-red-50")}>
+                      <span className="w-16 shrink-0">
+                        <span className="block text-lg leading-tight font-bold text-stone-900 tabular-nums">{fmtTime(s.start)}</span>
+                        <span className="block text-sm text-stone-600 tabular-nums">tot {fmtTime(s.end)}</span>
+                      </span>
+                      <span className="h-11 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: colors.color }} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5 text-base font-semibold text-stone-900">
+                          {s.kind === "wedstrijd" && <Trophy size={15} className="shrink-0 text-stone-600" />}
+                          <span className="truncate">{s.title}</span>
+                        </span>
+                        <span className="block text-sm text-stone-600">{what} · {sectionsText(s.sections)}</span>
+                        {conflict && <span className="mt-0.5 flex items-center gap-1 text-sm font-medium text-red-700"><AlertTriangle size={14} /> Dubbel geboekt of veld afgekeurd</span>}
+                      </span>
+                      <ChevronRight size={20} className="shrink-0 text-stone-400" />
+                    </button>
+                  </li>
+                );
+              })}
+              {requests.map((r) => (
+                <li key={r.id} className="flex items-center gap-3 bg-amber-50 px-4 py-3">
+                  <span className="w-16 shrink-0">
+                    <span className="block text-lg leading-tight font-bold text-amber-900 tabular-nums">{fmtTime(r.start)}</span>
+                    <span className="block text-sm text-amber-800 tabular-nums">tot {fmtTime(r.end)}</span>
+                  </span>
+                  <Hourglass size={20} className="shrink-0 text-amber-600" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-semibold text-amber-950">{lookups.team.get(r.teamId)?.name}</span>
+                    <span className="block text-sm text-amber-900">Aangevraagd, wacht op goedkeuring · {sectionsText(r.sections)}</span>
+                  </span>
+                </li>
+              ))}
+              {items.length === 0 && requests.length === 0 && !closed && <li className="px-4 py-4 text-stone-600">Nog niets gepland op dit veld.</li>}
+            </ul>
+            {addLabel && !closed && (
+              <div className="border-t border-stone-100 p-3">
+                <Button className="w-full" onClick={() => onAdd(f.id, nextStart)}><Plus size={18} /> {addLabel}</Button>
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
   );
 }
 
@@ -298,10 +424,12 @@ function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, 
     e.stopPropagation();
     const loc = locate(e.clientX, e.clientY);
     if (!loc) return;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // On touch screens a tap opens the block; dragging would fight with scrolling.
+    const touch = e.pointerType === "touch";
+    if (!touch) (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDrag({
       slot,
-      locked: !draggable(slot),
+      locked: touch || !draggable(slot),
       grabMinute: loc.minute - slot.start,
       grabLaneOffset: loc.lane - Math.min(...slot.sections),
       startX: e.clientX,
@@ -361,7 +489,7 @@ function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, 
               <div key={f.id} className="border-b border-l border-stone-200 bg-white px-3 pt-3 pb-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-stone-900">{f.name}</p>
-                  <div className="flex items-center gap-1.5 text-stone-400">
+                  <div className="flex items-center gap-1.5 text-stone-500">
                     {f.lit ? <span title="Verlicht"><Lightbulb size={14} /></span> : <span title="Geen verlichting"><LightbulbOff size={14} /></span>}
                     <Badge className={f.surface === "kunstgras" ? "bg-brand-50 text-brand-800" : "bg-lime-50 text-lime-800"}>{f.surface}</Badge>
                   </div>
@@ -369,9 +497,9 @@ function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, 
                 {closed ? (
                   <p className="mt-1 flex items-center gap-1 text-xs font-medium text-red-700"><Ban size={12} /> Afgekeurd · {closed.reason}</p>
                 ) : (
-                  <p className="mt-1 text-xs text-stone-400">Beschikbaar</p>
+                  <p className="mt-1 text-xs text-stone-500">Beschikbaar</p>
                 )}
-                <div className="mt-2 grid grid-cols-4 text-center text-[10px] font-semibold tracking-wider text-stone-400">
+                <div className="mt-2 grid grid-cols-4 text-center text-[10px] font-semibold tracking-wider text-stone-500">
                   {SECTION_LABELS.map((l) => <span key={l}>{l}</span>)}
                 </div>
               </div>
@@ -381,7 +509,7 @@ function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, 
           {/* time gutter */}
           <div className="sticky left-0 z-10 bg-white" style={{ height }}>
             {hours.map((h) => (
-              <div key={h} className="absolute right-2 -translate-y-1/2 text-xs text-stone-400 tabular-nums" style={{ top: Math.max(8, (h - range.from) * PX) }}>
+              <div key={h} className="absolute right-2 -translate-y-1/2 text-xs text-stone-500 tabular-nums" style={{ top: Math.max(8, (h - range.from) * PX) }}>
                 {fmtTime(h)}
               </div>
             ))}
@@ -500,7 +628,7 @@ function SlotBlock({ slot, top, conflict, faded, colors, onPointerDown }: {
       onPointerDown={onPointerDown}
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        "absolute z-[5] cursor-grab touch-none overflow-hidden rounded-lg border-l-4 py-1 text-xs shadow-sm transition-[opacity,box-shadow] hover:shadow-md active:cursor-grabbing",
+        "absolute z-[5] cursor-pointer touch-manipulation overflow-hidden rounded-lg border-l-4 py-1 text-xs shadow-sm transition-[opacity,box-shadow] hover:shadow-md",
         conflict && "conflict-ring",
         faded && "opacity-30",
         slot.sections.length > 1 ? "px-2" : "px-1.5",
@@ -579,14 +707,14 @@ function PitchMap({ date, range, slots }: { date: string; range: { from: number;
             className="w-full accent-brand-600"
             aria-label="Tijdstip"
           />
-          <div className="flex justify-between text-xs text-stone-400 tabular-nums">
+          <div className="flex justify-between text-xs text-stone-500 tabular-nums">
             <span>{fmtTime(range.from)}</span>
             <span>{fmtTime(range.to)}</span>
           </div>
         </div>
         <div className="text-right">
           <p className="text-3xl font-bold tabular-nums text-stone-900">{fmtTime(time)}</p>
-          <p className="text-xs text-stone-500">{active.length} activiteit(en) op het park</p>
+          <p className="text-xs text-stone-600">{active.length} activiteit(en) op het park</p>
         </div>
       </Card>
       <div className="grid gap-4 md:grid-cols-2">
@@ -597,7 +725,7 @@ function PitchMap({ date, range, slots }: { date: string; range: { from: number;
             <Card key={f.id} className="overflow-hidden">
               <div className="flex items-center justify-between px-4 pt-3 pb-2">
                 <p className="font-semibold">{f.name}</p>
-                <span className="text-xs text-stone-500">{f.surface} · {occ.length ? `${occ.length} bezet` : "vrij"}</span>
+                <span className="text-xs text-stone-600">{f.surface} · {occ.length ? `${occ.length} bezet` : "vrij"}</span>
               </div>
               <div className="px-3 pb-3">
                 <Pitch
@@ -672,13 +800,12 @@ function ClosureModal({ open, onClose, date }: { open: boolean; onClose: () => v
           <Input value={reason} onChange={(e) => setReason(e.target.value)} />
         </FormField>
         {affected.length > 0 && (
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" checked={cancelMatches} onChange={(e) => setCancelMatches(e.target.checked)} className="mt-0.5 accent-brand-600" />
-            <span>
-              {affected.length} thuiswedstrijd(en) op dit veld direct afgelasten en kleedkamers vrijgeven
-              <span className="block text-xs text-stone-500">Je kunt ze ook verplaatsen naar een ander veld in de tijdlijn.</span>
-            </span>
-          </label>
+          <Checkbox
+            checked={cancelMatches}
+            onChange={(e) => setCancelMatches(e.target.checked)}
+            label={`${affected.length} thuiswedstrijd${affected.length > 1 ? "en" : ""} op dit veld direct afgelasten en kleedkamers vrijgeven`}
+            hint="Je kunt ze ook verplaatsen naar een ander veld."
+          />
         )}
       </div>
     </Modal>

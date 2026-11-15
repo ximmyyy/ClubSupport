@@ -18,25 +18,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       opts = { undo: false };
     }
     setToasts((t) => [...t.slice(-2), { id, message, undo: opts?.undo }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), opts?.undo ? 9000 : 6000);
   }, [canEdit]);
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="no-print pointer-events-none fixed right-4 bottom-20 z-[60] flex flex-col gap-2 md:bottom-4" aria-live="polite">
+      <div className="no-print pointer-events-none fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] flex flex-col items-stretch gap-2 sm:inset-x-auto sm:right-4 sm:items-end lg:bottom-4" aria-live="polite">
         {toasts.map((t) => (
-          <div key={t.id} className="animate-toast pointer-events-auto flex items-center gap-3 rounded-xl bg-stone-900 px-4 py-3 text-sm text-white shadow-xl">
-            <CheckCircle2 size={18} className="text-brand-300" />
-            <span>{t.message}</span>
+          <div key={t.id} className="animate-toast pointer-events-auto flex items-center gap-3 rounded-2xl bg-stone-900 px-4 py-3 text-base text-white shadow-xl sm:text-sm">
+            <CheckCircle2 size={20} className="shrink-0 text-brand-300" />
+            <span className="flex-1">{t.message}</span>
             {t.undo && (
               <button
                 onClick={() => {
                   undo();
                   setToasts((all) => all.filter((x) => x.id !== t.id));
                 }}
-                className="ml-2 inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-xs font-semibold hover:bg-white/20"
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-white/15 px-3 text-sm font-semibold hover:bg-white/25 sm:min-h-9"
               >
-                <Undo2 size={14} /> Ongedaan maken
+                <Undo2 size={16} /> Ongedaan maken
               </button>
             )}
           </div>

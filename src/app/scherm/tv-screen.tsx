@@ -45,7 +45,7 @@ function Screen() {
   const closures = data.closures.filter((c) => c.date === matchDay);
 
   return (
-    <div className="flex min-h-screen flex-col bg-brand-950 p-6 text-white lg:p-10">
+    <div className="flex min-h-dvh flex-col bg-brand-950 p-6 text-white lg:p-10">
       <header className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <LogoMark size={56} />

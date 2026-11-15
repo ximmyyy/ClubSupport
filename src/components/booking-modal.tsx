@@ -1,11 +1,13 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { sectionsLabel } from "@/lib/planning";
 import { uid } from "@/lib/seed";
 import { fmtTime, formatDate, parseTime, WEEKDAYS, weekdayOf } from "@/lib/time";
 import type { Booking, BookingKind } from "@/lib/types";
+import { useConfirm } from "./confirm";
 import { useToast } from "./toast";
 import { Button, FormField, Input, Modal, Segmented, Select } from "./ui";
 
@@ -39,6 +41,7 @@ export function BookingModal({ open, onClose, draft, date }: { open: boolean; on
 function BookingForm({ onClose, draft, date }: { onClose: () => void; draft: BookingDraft; date: string }) {
   const { data, update } = useStore();
   const toast = useToast();
+  const confirm = useConfirm();
   const [form, setForm] = useState(draft);
   const existing = draft.id ? data.bookings.find((b) => b.id === draft.id) : undefined;
   const wd = weekdayOf(date);
@@ -76,9 +79,17 @@ function BookingForm({ onClose, draft, date }: { onClose: () => void; draft: Boo
     onClose();
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!existing) return;
-    update((d) => ({ ...d, bookings: d.bookings.filter((b) => b.id !== existing.id) }));
+    const name = data.teams.find((t) => t.id === existing.teamId)?.name ?? existing.label ?? "deze reservering";
+    const ok = await confirm({
+      title: existing.weekday ? "Alle weken verwijderen?" : "Reservering verwijderen?",
+      text: existing.weekday
+        ? `De wekelijkse training van ${name} op ${WEEKDAYS[existing.weekday - 1]} wordt voor alle weken verwijderd.`
+        : `De reservering van ${name} op ${formatDate(existing.date ?? date, { long: true })} wordt verwijderd.`,
+    });
+    if (!ok) return;
+    update((d) => ({ ...d, bookings: d.bookings.filter((b) => b.id !== existing.id), requests: d.requests.filter((r) => r.bookingId !== existing.id) }));
     toast(existing.weekday ? "Wekelijkse reeks verwijderd" : "Reservering verwijderd", { undo: true });
     onClose();
   };
@@ -87,11 +98,11 @@ function BookingForm({ onClose, draft, date }: { onClose: () => void; draft: Boo
     <Modal
       open
       onClose={onClose}
-      title={existing ? "Reservering bewerken" : "Nieuwe reservering"}
+      title={existing ? "Reservering wijzigen" : "Reservering toevoegen"}
       footer={
         <>
-          {existing?.weekday && <Button variant="ghost" onClick={skipThisWeek}>Alleen deze week laten vervallen</Button>}
-          {existing && <Button variant="danger" onClick={remove}>{existing.weekday ? "Reeks verwijderen" : "Verwijderen"}</Button>}
+          {existing && <Button variant="danger" onClick={remove}><Trash2 size={18} /> {existing.weekday ? "Alle weken verwijderen" : "Verwijderen"}</Button>}
+          {existing?.weekday && <Button onClick={skipThisWeek}>Alleen op {formatDate(date)} laten vervallen</Button>}
           <Button variant="primary" onClick={save} disabled={form.end <= form.start || (form.kind === "training" && !form.teamId)}>
             Opslaan
           </Button>
@@ -104,6 +115,9 @@ function BookingForm({ onClose, draft, date }: { onClose: () => void; draft: Boo
           onChange={(v) => set("kind", v)}
           options={[{ value: "training", label: "Training" }, { value: "overig", label: "Overig (toernooi, clinic…)" }]}
         />
+        {data.teams.length === 0 && (
+          <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">Er zijn nog geen teams. Voeg eerst teams toe via het menu, dan kun je hier een training inplannen.</p>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Team">
             <Select value={form.teamId ?? ""} onChange={(e) => set("teamId", e.target.value || undefined)}>
@@ -142,7 +156,7 @@ function BookingForm({ onClose, draft, date }: { onClose: () => void; draft: Boo
           />
         </FormField>
         {form.end <= form.start && <p className="text-sm text-red-600">De eindtijd moet na de begintijd liggen.</p>}
-        <p className="text-xs text-stone-500">
+        <p className="text-xs text-stone-600">
           {data.fields.find((f) => f.id === form.fieldId)?.name}, {sectionsLabel(form.sections)}, {fmtTime(form.start)}–{fmtTime(form.end)}
         </p>
       </div>

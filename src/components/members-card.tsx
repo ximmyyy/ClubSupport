@@ -6,8 +6,9 @@ import { deleteInvite, inviteMember, listMembers, removeMember, ROLE_LABELS, set
 import { teamAge } from "@/lib/meta";
 import { useStore } from "@/lib/store";
 import { useAccount } from "./account";
+import { useConfirm } from "./confirm";
 import { useToast } from "./toast";
-import { Badge, Button, Card, CardHeader, Input, Select } from "./ui";
+import { Badge, Button, Card, CardHeader, IconButton, Input, Select } from "./ui";
 
 const ROLES: Role[] = ["admin", "planner", "trainer", "viewer"];
 const ROLE_HELP: Record<Role, string> = {
@@ -20,6 +21,7 @@ const ROLE_HELP: Record<Role, string> = {
 export function MembersCard() {
   const { state, sb } = useAccount();
   const toast = useToast();
+  const confirm = useConfirm();
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [email, setEmail] = useState("");
@@ -70,8 +72,8 @@ export function MembersCard() {
         {members.map((m) => (
           <div key={m.userId} className="flex flex-wrap items-center gap-3 px-5 py-2.5">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{m.email || "Onbekend"} {m.userId === state.userId && <span className="text-stone-400">(jij)</span>}</p>
-              <p className="text-xs text-stone-500">
+              <p className="truncate text-sm font-medium">{m.email || "Onbekend"} {m.userId === state.userId && <span className="text-stone-500">(jij)</span>}</p>
+              <p className="text-xs text-stone-600">
                 {m.role === "trainer" && m.teamIds.length ? `Trainer van ${m.teamIds.map(teamName).filter(Boolean).join(", ")}` : ROLE_HELP[m.role]}
               </p>
             </div>
@@ -80,16 +82,19 @@ export function MembersCard() {
                 {m.role === "trainer" && (
                   <TeamPicker value={m.teamIds} onChange={(ids) => run(() => setMemberTeams(sb, club.clubId, m.userId, ids), "Teams bijgewerkt")} />
                 )}
-                <Select className="h-9 w-40" value={m.role} onChange={(e) => run(() => setMemberRole(sb, club.clubId, m.userId, e.target.value as Role), "Rol aangepast")}>
+                <Select compact className="sm:w-40" value={m.role} onChange={(e) => run(() => setMemberRole(sb, club.clubId, m.userId, e.target.value as Role), "Rol aangepast")}>
                   {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                 </Select>
-                <button
-                  onClick={() => run(() => removeMember(sb, club.clubId, m.userId), "Lid verwijderd")}
-                  className="rounded-lg p-1.5 text-stone-400 hover:bg-red-50 hover:text-red-600"
-                  aria-label={`${m.email} verwijderen`}
+                <IconButton
+                  label={`${m.email} verwijderen`}
+                  tone="danger"
+                  onClick={async () => {
+                    const ok = await confirm({ title: "Lid verwijderen?", text: `${m.email} kan daarna niet meer bij de gegevens van deze club.` });
+                    if (ok) run(() => removeMember(sb, club.clubId, m.userId), "Lid verwijderd");
+                  }}
                 >
-                  <Trash2 size={16} />
-                </button>
+                  <Trash2 size={20} />
+                </IconButton>
               </>
             ) : (
               <Badge>{ROLE_LABELS[m.role]}</Badge>
@@ -100,14 +105,14 @@ export function MembersCard() {
           <div key={i.email} className="flex flex-wrap items-center gap-3 bg-amber-50/40 px-5 py-2.5">
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 truncate text-sm font-medium"><Clock size={14} className="text-amber-600" /> {i.email}</p>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-stone-600">
                 Uitgenodigd als {ROLE_LABELS[i.role].toLowerCase()}
                 {i.teamIds.length ? ` van ${i.teamIds.map(teamName).filter(Boolean).join(", ")}` : ""} · wordt lid zodra deze persoon inlogt
               </p>
             </div>
-            <button onClick={() => run(() => deleteInvite(sb, club.clubId, i.email), "Uitnodiging ingetrokken")} className="rounded-lg p-1.5 text-stone-400 hover:bg-red-50 hover:text-red-600" aria-label={`Uitnodiging ${i.email} intrekken`}>
-              <Trash2 size={16} />
-            </button>
+            <IconButton label={`Uitnodiging voor ${i.email} intrekken`} tone="danger" onClick={() => run(() => deleteInvite(sb, club.clubId, i.email), "Uitnodiging ingetrokken")}>
+              <Trash2 size={20} />
+            </IconButton>
           </div>
         ))}
       </div>
@@ -132,7 +137,7 @@ export function MembersCard() {
           </Select>
           {role === "trainer" && <TeamPicker value={teamIds} onChange={setTeamIds} />}
           <Button type="submit" variant="primary" disabled={role === "trainer" && !teamIds.length}><UserPlus size={16} /> Uitnodigen</Button>
-          <p className="w-full text-xs text-stone-500">
+          <p className="w-full text-xs text-stone-600">
             Laat de persoon daarna inloggen via deze site met dit e-mailadres; de uitnodiging wordt dan automatisch omgezet in een lidmaatschap.
           </p>
         </form>
@@ -159,16 +164,16 @@ export function TeamPicker({ value, onChange }: { value: string[]; onChange: (id
         else if (draft.join() !== value.join()) onChange(draft);
       }}
     >
-      <summary className="flex h-9 max-w-52 cursor-pointer list-none items-center gap-1 truncate rounded-lg border border-stone-300 bg-white px-3 text-sm shadow-sm">
+      <summary className="flex h-12 max-w-64 cursor-pointer list-none items-center gap-1 truncate rounded-xl border border-stone-300 bg-white px-3 text-base shadow-sm sm:h-9 sm:max-w-52 sm:text-sm">
         <span className="truncate">{label}</span>
-        <ChevronDown size={14} className="ml-auto shrink-0 text-stone-400" />
+        <ChevronDown size={14} className="ml-auto shrink-0 text-stone-500" />
       </summary>
       <div className="absolute right-0 z-20 mt-1 max-h-64 w-56 overflow-y-auto rounded-xl border border-stone-200 bg-white p-2 shadow-xl">
         {teams.map((t) => (
-          <label key={t.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-stone-50">
+          <label key={t.id} className="flex min-h-11 items-center gap-3 rounded-md px-2 text-base hover:bg-stone-50 sm:min-h-8 sm:text-sm">
             <input
               type="checkbox"
-              className="accent-brand-600"
+              className="h-5 w-5 accent-brand-600"
               checked={draft.includes(t.id)}
               onChange={(e) => setDraft((d) => (e.target.checked ? [...d, t.id] : d.filter((x) => x !== t.id)))}
             />

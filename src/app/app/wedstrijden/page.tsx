@@ -1,12 +1,13 @@
 "use client";
 
 import { Ban, CalendarDays, ClipboardCopy, DoorOpen, FileUp, MapPin, Pencil, Plus, RotateCcw, Send, Sparkles, Trophy, Wand2 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSelectedDate } from "@/components/app-shell";
 import { MatchModal } from "@/components/match-modal";
 import { RequestDraft, RequestModal } from "@/components/request-modal";
 import { useToast } from "@/components/toast";
-import { Badge, Button, Card, cn, EmptyState, Modal, PageHeader, Segmented } from "@/components/ui";
+import { Badge, Button, Card, cn, EmptyState, Modal, PageHeader, Segmented, Textarea } from "@/components/ui";
 import { CATEGORY_META, ROOM_ROLE_META } from "@/lib/meta";
 import { autoAssignRooms, autoPlanMatchFields, demandKey, generateDuties, optimizeKickoffs, roomDemandsForDate, sectionsLabel } from "@/lib/planning";
 import { uid } from "@/lib/seed";
@@ -37,6 +38,7 @@ export default function WedstrijdenPage() {
     .filter((m) => m.date === activeDay)
     .sort((a, b) => a.kickoff - b.kickoff || lookups.team.get(a.teamId)!.name.localeCompare(lookups.team.get(b.teamId)!.name));
   const home = matches.filter((m) => m.home);
+  const noField = home.filter((m) => m.status === "gepland" && !m.fieldId).length;
   const roomGaps = activeDay
     ? (() => {
         const covered = new Set(data.roomAssignments.filter((a) => a.date === activeDay).map(demandKey));
@@ -77,12 +79,12 @@ export default function WedstrijdenPage() {
       <PageHeader
         eyebrow="Competitie"
         title="Wedstrijden"
-        description="Het wedstrijdprogramma, met velden, kleedkamers en scheidsrechters op één plek."
+        description="Het programma per speeldag, met bij elke thuiswedstrijd het veld en de kleedkamers."
         actions={
-          canEdit && (
+          canEdit && data.teams.length > 0 && (
             <>
-              <Button onClick={() => setImportOpen(true)}><FileUp size={16} /> Programma importeren</Button>
-              <Button variant="primary" onClick={() => setEdit({ date: activeDay ?? today, home: true, status: "gepland", kickoff: 600 })}><Plus size={16} /> Wedstrijd</Button>
+              <Button onClick={() => setImportOpen(true)}><FileUp size={18} /> Programma plakken</Button>
+              <Button variant="primary" onClick={() => setEdit({ date: activeDay ?? today, home: true, status: "gepland", kickoff: 600 })}><Plus size={18} /> Wedstrijd toevoegen</Button>
             </>
           )
         }
@@ -96,7 +98,7 @@ export default function WedstrijdenPage() {
               key={d}
               onClick={() => setDate(d)}
               className={cn(
-                "rounded-xl border px-3 py-1.5 text-sm font-medium whitespace-nowrap",
+                "min-h-11 shrink-0 rounded-xl border px-3.5 text-base font-semibold whitespace-nowrap sm:min-h-9 sm:text-sm",
                 d === activeDay ? "border-brand-600 bg-brand-600 text-white" : "border-stone-200 bg-white text-stone-700 hover:border-stone-300",
               )}
             >
@@ -107,7 +109,32 @@ export default function WedstrijdenPage() {
       </div>
 
       {!activeDay ? (
-        <Card><EmptyState icon={<Trophy />} title={tab === "programma" ? "Geen komende wedstrijden" : "Nog geen uitslagen"}>Voeg wedstrijden toe of importeer het programma.</EmptyState></Card>
+        <Card>
+          {data.teams.length === 0 ? (
+            <EmptyState
+              icon={<Trophy />}
+              title="Voeg eerst je teams toe"
+              action={canEdit && <Link href="/app/teams" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand-600 px-4 font-semibold text-white hover:bg-brand-700">Naar Teams</Link>}
+            >
+              Een wedstrijd hoort bij een team. Zodra je teams hebt toegevoegd, kun je hier het programma invullen.
+            </EmptyState>
+          ) : tab === "programma" ? (
+            <EmptyState
+              icon={<Trophy />}
+              title="Er staan geen wedstrijden gepland"
+              action={canEdit && (
+                <>
+                  <Button variant="primary" onClick={() => setEdit({ date: today, home: true, status: "gepland", kickoff: 600 })}><Plus size={18} /> Wedstrijd toevoegen</Button>
+                  <Button onClick={() => setImportOpen(true)}><FileUp size={18} /> Programma plakken</Button>
+                </>
+              )}
+            >
+              Voeg wedstrijden één voor één toe, of plak het hele programma in één keer uit Sportlink of Excel.
+            </EmptyState>
+          ) : (
+            <EmptyState icon={<Trophy />} title="Nog geen uitslagen">Zet een wedstrijd op &quot;Gespeeld&quot; en vul de uitslag in. Dan verschijnt die hier.</EmptyState>
+          )}
+        </Card>
       ) : (
         <>
           {tab === "programma" && home.length > 0 && (
@@ -117,8 +144,9 @@ export default function WedstrijdenPage() {
                   <p className="flex items-center gap-2 text-sm font-medium text-brand-100"><Sparkles size={16} /> Wedstrijddag-assistent</p>
                   <p className="mt-1 text-xl font-bold">{cap(formatDate(activeDay, { long: true }))}: {home.filter((m) => m.status === "gepland").length} thuiswedstrijden</p>
                   <p className="text-sm text-white/80">
-                    {home.filter((m) => m.status === "gepland" && !m.fieldId).length} zonder veld ·{" "}
-                    {roomGaps} team(s) zonder kleedkamer
+                    {noField + roomGaps === 0
+                      ? "Alle thuiswedstrijden hebben een veld en kleedkamers."
+                      : `${noField} zonder veld · ${roomGaps} ${roomGaps === 1 ? "team" : "teams"} zonder kleedkamer`}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -139,15 +167,15 @@ export default function WedstrijdenPage() {
                 <div key={m.id} className={cn("flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center", cancelled && "bg-stone-50")}>
                   <div className="flex items-center gap-4 md:w-[45%]">
                     <div className="w-14 shrink-0 text-center">
-                      <p className={cn("text-lg font-bold tabular-nums", cancelled && "text-stone-400 line-through")}>{fmtTime(m.kickoff)}</p>
+                      <p className={cn("text-lg font-bold tabular-nums", cancelled && "text-stone-500 line-through")}>{fmtTime(m.kickoff)}</p>
                       <p className={cn("text-[11px] font-semibold uppercase", m.home ? "text-brand-700" : "text-orange-700")}>{m.home ? "Thuis" : "Uit"}</p>
                     </div>
                     <button onClick={() => setEdit(m)} className="min-w-0 text-left">
-                      <p className={cn("flex items-center gap-2 font-semibold text-stone-900", cancelled && "text-stone-400")}>
+                      <p className={cn("flex items-center gap-2 font-semibold text-stone-900", cancelled && "text-stone-500")}>
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: meta?.color }} />
                         <span className="truncate">{m.home ? `${team?.name} – ${m.opponent}` : `${m.opponent} – ${team?.name}`}</span>
                       </p>
-                      <p className="text-sm text-stone-500">{meta?.label}{m.referee ? ` · scheids: ${m.referee}` : ""}</p>
+                      <p className="text-sm text-stone-600">{meta?.label}{m.referee ? ` · scheids: ${m.referee}` : ""}</p>
                     </button>
                   </div>
                   <div className="flex flex-1 flex-wrap items-center gap-2 text-sm">
@@ -169,7 +197,7 @@ export default function WedstrijdenPage() {
                         ))}
                       </>
                     ) : (
-                      <span className="text-stone-500">Uitwedstrijd</span>
+                      <span className="text-stone-600">Uitwedstrijd</span>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -181,7 +209,7 @@ export default function WedstrijdenPage() {
                           ) : (
                             <Button size="sm" variant="danger" onClick={() => setConfirmCancel(m)}><Ban size={14} /> Afgelasten</Button>
                           ))}
-                        <Button size="sm" onClick={() => setEdit(m)}><Pencil size={14} /> Bewerken</Button>
+                        <Button size="sm" onClick={() => setEdit(m)}><Pencil size={16} /> Wijzigen</Button>
                       </>
                     ) : (
                       m.home && m.status === "gepland" && m.fieldId && m.sections && me.teamIds.includes(m.teamId) && (
@@ -271,7 +299,7 @@ function PlanDayModal({ date, onClose }: { date: string; onClose: () => void }) 
         <PlanOption checked={duties} onChange={setDuties} title="Vrijwilligersdiensten aanmaken">
           Bardiensten, wedstrijdsecretariaat, veld opbouwen en een scheidsrechter per thuiswedstrijd.
         </PlanOption>
-        <p className="text-xs text-stone-500">Alles is ongedaan te maken via de melding rechtsonder.</p>
+        <p className="text-xs text-stone-600">Alles is ongedaan te maken via de melding rechtsonder.</p>
       </div>
     </Modal>
   );
@@ -313,20 +341,14 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       open
       wide
       onClose={onClose}
-      title="Programma importeren"
+      title="Programma plakken"
       footer={<Button variant="primary" disabled={!valid.length} onClick={importAll}>{valid.length} wedstrijd(en) importeren</Button>}
     >
       <p className="mb-3 text-sm text-stone-600">
         Plak het programma uit Sportlink, de KNVB-app of Excel. Eén wedstrijd per regel: <code className="rounded bg-stone-100 px-1">datum;tijd;thuisteam;uitteam</code>. We herkennen je eigen teams aan de clubnaam <b>{data.club.shortName}</b>.
       </p>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={example}
-        rows={7}
-        className="w-full rounded-lg border border-stone-300 p-3 font-mono text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
-      />
-      <button className="mt-1 text-xs font-medium text-brand-700" onClick={() => setText(example)}>Voorbeeld invullen</button>
+      <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={example} rows={6} className="font-mono" aria-label="Programma" />
+      <Button size="sm" variant="ghost" className="mt-1" onClick={() => setText(example)}>Voorbeeld invullen</Button>
       {parsed.length > 0 && (
         <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto text-sm">
           {parsed.map((p, i) => (
@@ -348,10 +370,10 @@ function ImportModal({ onClose }: { onClose: () => void }) {
 function PlanOption({ checked, onChange, title, children }: { checked: boolean; onChange: (v: boolean) => void; title: string; children: React.ReactNode }) {
   return (
     <label className={cn("flex cursor-pointer gap-3 rounded-xl border p-3", checked ? "border-brand-300 bg-brand-50/60" : "border-stone-200")}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-1 accent-brand-600" />
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-brand-600" />
       <span>
-        <span className="block font-medium">{title}</span>
-        <span className="text-sm text-stone-500">{children}</span>
+        <span className="block text-base font-semibold text-stone-900">{title}</span>
+        <span className="text-sm text-stone-600">{children}</span>
       </span>
     </label>
   );
@@ -367,6 +389,7 @@ function CancelModal({ match, onClose, onConfirm }: { match: Match; onClose: () 
       open
       onClose={onClose}
       title="Wedstrijd afgelasten?"
+      hideCancel
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Niet afgelasten</Button>
@@ -382,7 +405,7 @@ function CancelModal({ match, onClose, onConfirm }: { match: Match; onClose: () 
         {rooms > 0 && <li>{rooms} kleedkamer{rooms > 1 ? "s komen" : " komt"} vrij.</li>}
         <li>Het TV-scherm toont de wedstrijd als afgelast.</li>
       </ul>
-      <p className="mt-3 text-xs text-stone-500">Je kunt dit altijd terugdraaien met &quot;Herstellen&quot;. Vergeet niet de tegenstander en de KNVB te informeren.</p>
+      <p className="mt-3 text-xs text-stone-600">Je kunt dit altijd terugdraaien met &quot;Herstellen&quot;. Vergeet niet de tegenstander en de KNVB te informeren.</p>
     </Modal>
   );
 }

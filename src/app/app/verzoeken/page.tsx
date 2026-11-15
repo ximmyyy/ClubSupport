@@ -89,9 +89,9 @@ function RequestCard({ r }: { r: ChangeRequest }) {
               {r.status === "goedgekeurd" && <Badge className="bg-brand-50 text-brand-800"><Check size={12} /> Goedgekeurd</Badge>}
               {r.status === "afgewezen" && <Badge className="bg-red-50 text-red-700"><X size={12} /> Afgewezen</Badge>}
             </div>
-            {current && <p className="text-sm text-stone-500">{current}</p>}
+            {current && <p className="text-sm text-stone-600">{current}</p>}
             {r.note && <p className="mt-2 rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">“{r.note}”</p>}
-            <p className="mt-1 text-xs text-stone-400">
+            <p className="mt-1 text-xs text-stone-500">
               Aangevraagd door {r.createdByName || "trainer"}{r.createdAt ? ` op ${formatDate(r.createdAt.slice(0, 10))}` : ""}
               {r.decidedByName && ` · ${r.status === "goedgekeurd" ? "goedgekeurd" : "afgewezen"} door ${r.decidedByName}`}
             </p>
@@ -110,7 +110,7 @@ function RequestCard({ r }: { r: ChangeRequest }) {
           <div className="flex shrink-0 flex-col gap-2 md:w-72">
             {canEdit ? (
               <>
-                <Input className="h-9" placeholder="Reactie aan trainer (optioneel)" value={note} onChange={(e) => setNote(e.target.value)} />
+                <Input compact placeholder="Reactie aan trainer (optioneel)" value={note} onChange={(e) => setNote(e.target.value)} />
                 <div className="flex gap-2">
                   <Button variant="primary" className="flex-1" onClick={approve}>
                     <Check size={16} /> {conflicts.length ? "Toch goedkeuren" : "Goedkeuren"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Wand2 } from "lucide-react";
+import { Trash2, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { FIELD_NEED_META } from "@/lib/meta";
 import { fieldSlotsForDate, findFreePlacement } from "@/lib/planning";
@@ -9,6 +9,7 @@ import { useStore } from "@/lib/store";
 import { fmtTime, parseTime } from "@/lib/time";
 import type { Match, MatchStatus } from "@/lib/types";
 import { SECTION_OPTIONS } from "./booking-modal";
+import { useConfirm } from "./confirm";
 import { useToast } from "./toast";
 import { Button, FormField, Input, Modal, Segmented, Select } from "./ui";
 
@@ -20,6 +21,7 @@ export function MatchModal({ match, onClose }: { match: Partial<Match> | null; o
 function MatchForm({ initial, onClose }: { initial: Partial<Match>; onClose: () => void }) {
   const { data, update } = useStore();
   const toast = useToast();
+  const confirm = useConfirm();
   const [m, setM] = useState<Partial<Match>>({ home: true, status: "gepland", kickoff: 600, ...initial });
   const [hint, setHint] = useState<string | null>(null);
   const set = <K extends keyof Match>(k: K, v: Match[K]) => setM((x) => ({ ...x, [k]: v }));
@@ -56,10 +58,16 @@ function MatchForm({ initial, onClose }: { initial: Partial<Match>; onClose: () 
     onClose();
   };
 
-  const remove = () => {
+  const remove = async () => {
+    const ok = await confirm({
+      title: "Wedstrijd verwijderen?",
+      text: `${team?.name ?? "De wedstrijd"} tegen ${m.opponent} verdwijnt uit het programma, samen met de kleedkamers en diensten die erbij horen. Gaat de wedstrijd alleen niet door? Kies dan "Afgelast".`,
+    });
+    if (!ok) return;
     update((d) => ({
       ...d,
       matches: d.matches.filter((x) => x.id !== m.id),
+      requests: d.requests.filter((r) => r.matchId !== m.id),
       roomAssignments: d.roomAssignments.filter((a) => a.matchId !== m.id),
       duties: d.duties.filter((x) => x.matchId !== m.id),
     }));
@@ -71,10 +79,10 @@ function MatchForm({ initial, onClose }: { initial: Partial<Match>; onClose: () 
     <Modal
       open
       onClose={onClose}
-      title={m.id ? "Wedstrijd bewerken" : "Nieuwe wedstrijd"}
+      title={m.id ? "Wedstrijd wijzigen" : "Wedstrijd toevoegen"}
       footer={
         <>
-          {m.id && <Button variant="danger" onClick={remove}>Verwijderen</Button>}
+          {m.id && <Button variant="danger" onClick={remove}><Trash2 size={18} /> Verwijderen</Button>}
           <Button variant="primary" onClick={save} disabled={!valid}>Opslaan</Button>
         </>
       }

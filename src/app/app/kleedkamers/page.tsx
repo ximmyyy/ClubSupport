@@ -1,10 +1,11 @@
 "use client";
 
-import { AlertTriangle, ClipboardCopy, DoorOpen, Plus, Printer, ShowerHead, Users, Wand2 } from "lucide-react";
+import { AlertTriangle, ChevronRight, ClipboardCopy, DoorOpen, List, Plus, Printer, Rows3, Settings, ShowerHead, Users, Wand2 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useSelectedDate } from "@/components/app-shell";
 import { useToast } from "@/components/toast";
-import { Badge, Button, Card, CardHeader, cn, DateNavigator, EmptyState, FormField, Input, Modal, PageHeader, Select } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, cn, DateNavigator, EmptyState, FormField, Input, Modal, PageHeader, Segmented, Select } from "@/components/ui";
 import { ROOM_ROLE_META } from "@/lib/meta";
 import { autoAssignRooms, demandKey, findRoomConflicts, roomDemandsForDate, RoomDemand } from "@/lib/planning";
 import { uid } from "@/lib/seed";
@@ -20,6 +21,9 @@ export default function KleedkamersPage() {
   const toast = useToast();
   const [date, setDate] = useSelectedDate();
   const [edit, setEdit] = useState<Partial<RoomAssignment> | null>(null);
+  const [view, setView] = useState<"lijst" | "tijdbalk">(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? "lijst" : "tijdbalk",
+  );
 
   const assignments = useMemo(() => data.roomAssignments.filter((a) => a.date === date), [data.roomAssignments, date]);
   const demands = useMemo(() => roomDemandsForDate(data, date), [data, date]);
@@ -77,28 +81,50 @@ export default function KleedkamersPage() {
         <PageHeader
           eyebrow="Planning"
           title="Kleedkamers"
-          description={`Elk team krijgt ${data.club.roomBefore} min vóór de aftrap een kleedkamer en houdt die tot ${data.club.roomAfter} min na afloop. Tussen twee wissels zit ${data.club.roomBuffer} min schoonmaaktijd.`}
-          actions={<DateNavigator value={date} onChange={setDate} />}
+          description={`Welk team zit in welke kleedkamer. Een team krijgt de kleedkamer ${data.club.roomBefore} minuten voor de aftrap, tot ${data.club.roomAfter} minuten na afloop.`}
+          actions={
+            <>
+              <DateNavigator value={date} onChange={setDate} />
+              <Segmented
+                value={view}
+                onChange={setView}
+                options={[
+                  { value: "lijst", label: <span className="flex items-center gap-1.5"><List size={16} /> Lijst</span> },
+                  { value: "tijdbalk", label: <span className="flex items-center gap-1.5"><Rows3 size={16} /> Tijdbalk</span> },
+                ]}
+              />
+            </>
+          }
         />
         <div className="mb-4 flex flex-wrap gap-2">
           {canEdit && <Button variant="primary" onClick={autoAssign} disabled={!demands.length}><Wand2 size={16} /> Automatisch indelen</Button>}
-          {canEdit && <Button onClick={() => setEdit({ date, start: 18 * 60, end: 19 * 60 + 30, role: "overig", label: "", roomId: data.rooms[0]?.id })}><Plus size={16} /> Handmatig</Button>}
+          {canEdit && <Button onClick={() => setEdit({ date, start: 18 * 60, end: 19 * 60 + 30, role: "overig", label: "", roomId: data.rooms[0]?.id })}><Plus size={18} /> Zelf toevoegen</Button>}
           <Button onClick={copyText} disabled={!assignments.length}><ClipboardCopy size={16} /> Kopieer voor WhatsApp</Button>
           <Button onClick={() => window.print()} disabled={!assignments.length}><Printer size={16} /> Deurbordjes printen</Button>
         </div>
 
         {conflicts.length > 0 && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-            <p className="mb-1 flex items-center gap-2 font-semibold"><AlertTriangle size={16} /> {conflicts.length} probleem/problemen</p>
+            <p className="mb-1 flex items-center gap-2 font-semibold"><AlertTriangle size={16} /> {conflicts.length === 1 ? "1 probleem" : `${conflicts.length} problemen`} in de indeling</p>
             <ul className="ml-6 list-disc">{conflicts.map((c, i) => <li key={i}>{c.message}</li>)}</ul>
           </div>
         )}
 
-        <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+          {data.rooms.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon={<DoorOpen />}
+                title="Er zijn nog geen kleedkamers"
+                action={canEdit && <Link href="/app/instellingen#kleedkamers" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand-600 px-4 font-semibold text-white hover:bg-brand-700"><Settings size={18} /> Kleedkamers toevoegen</Link>}
+              >
+                Voeg eerst de kleedkamers van je club toe bij Instellingen. Daarna deelt Club Support ze voor je in.
+              </EmptyState>
+            </Card>
+          ) : view === "lijst" ? (
+            <RoomList assignments={assignments} conflictIds={conflictIds} onOpen={(a) => canEdit && setEdit(a)} canEdit={canEdit} />
+          ) : (
           <Card className="overflow-hidden">
-            {data.rooms.length === 0 ? (
-              <EmptyState icon={<DoorOpen />} title="Nog geen kleedkamers">Voeg kleedkamers toe bij Instellingen.</EmptyState>
-            ) : (
               <Gantt
                 range={range}
                 assignments={assignments}
@@ -106,7 +132,6 @@ export default function KleedkamersPage() {
                 onOpen={(a) => canEdit && setEdit(a)}
                 onMove={(a, roomId) => canEdit && moveTo(a, roomId)}
               />
-            )}
             <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-stone-100 px-4 py-3 text-xs text-stone-600">
               {(Object.keys(ROOM_ROLE_META) as RoomRole[]).map((r) => (
                 <span key={r} className="flex items-center gap-1.5">
@@ -114,15 +139,16 @@ export default function KleedkamersPage() {
                   {ROOM_ROLE_META[r].label}
                 </span>
               ))}
-              <span className="ml-auto text-stone-400">Sleep een blok naar een andere kleedkamer</span>
+              <span className="ml-auto text-stone-600">Klik op een blok om het te wijzigen, of sleep het naar een andere kleedkamer</span>
             </div>
           </Card>
+          )}
 
-          <div className="grid content-start gap-4">
-            <Card>
-              <CardHeader title="Nog in te delen" subtitle={open.length ? `${open.length} team(s) zonder kleedkamer` : "Iedereen heeft een plek"} />
+          <div className={cn("grid content-start gap-4", open.length > 0 && "order-first xl:order-none")}>
+            <Card className={cn(open.length > 0 && "border-amber-300")}>
+              <CardHeader title="Nog in te delen" subtitle={open.length ? `${open.length} ${open.length === 1 ? "team heeft" : "teams hebben"} nog geen kleedkamer` : "Iedereen heeft een plek"} />
               <div className="divide-y divide-stone-100">
-                {open.length === 0 && <p className="px-5 py-4 text-sm text-stone-500">✅ Alle wedstrijden en trainingen hebben een kleedkamer.</p>}
+                {open.length === 0 && <p className="px-5 py-4 text-sm text-stone-600">✅ Alle wedstrijden en trainingen hebben een kleedkamer.</p>}
                 {open.map((d) => {
                   const free = data.rooms.filter((r) => !assignments.some((a) => a.roomId === r.id && overlaps(d.start - data.club.roomBuffer, d.end + data.club.roomBuffer, a.start, a.end)));
                   return (
@@ -131,8 +157,8 @@ export default function KleedkamersPage() {
                         <p className="font-medium text-stone-800">{d.label}</p>
                         <Badge color={ROOM_ROLE_META[d.role].color} soft={ROOM_ROLE_META[d.role].soft}>{ROOM_ROLE_META[d.role].label}</Badge>
                       </div>
-                      <p className="text-xs text-stone-500 tabular-nums">{fmtTime(d.start)}–{fmtTime(d.end)} · {d.players} pers.</p>
-                      <Select className="mt-2 h-9" value="" disabled={!canEdit} onChange={(e) => e.target.value && assignDemand(d, e.target.value)}>
+                      <p className="text-xs text-stone-600 tabular-nums">{fmtTime(d.start)}–{fmtTime(d.end)} · {d.players} pers.</p>
+                      <Select compact className="mt-2" value="" disabled={!canEdit} onChange={(e) => e.target.value && assignDemand(d, e.target.value)}>
                         <option value="">{free.length ? `Kies kleedkamer (${free.length} vrij)…` : "Geen kleedkamer vrij"}</option>
                         {free.map((r) => <option key={r.id} value={r.id}>{r.name} · {r.capacity} pl.</option>)}
                       </Select>
@@ -141,19 +167,19 @@ export default function KleedkamersPage() {
                 })}
               </div>
             </Card>
-            <Card>
+            <Card className={cn(view === "lijst" && "hidden")}>
               <CardHeader title="Wie zit waar?" subtitle="Per team, op aftraptijd" />
               <ul className="max-h-96 divide-y divide-stone-100 overflow-y-auto">
                 {[...assignments].sort((a, b) => a.start - b.start).map((a) => (
                   <li key={a.id} className="flex items-center justify-between gap-2 px-5 py-2 text-sm">
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{a.label}</span>
-                      <span className="text-xs text-stone-500 tabular-nums">{fmtTime(a.start)} · {ROOM_ROLE_META[a.role].label}</span>
+                      <span className="text-xs text-stone-600 tabular-nums">{fmtTime(a.start)} · {ROOM_ROLE_META[a.role].label}</span>
                     </span>
                     <span className="shrink-0 rounded-lg bg-stone-100 px-2 py-1 text-xs font-semibold">{data.rooms.find((r) => r.id === a.roomId)?.name.replace("Kleedkamer", "KK")}</span>
                   </li>
                 ))}
-                {!assignments.length && <li className="px-5 py-4 text-sm text-stone-500">Nog niets ingedeeld voor deze dag.</li>}
+                {!assignments.length && <li className="px-5 py-4 text-sm text-stone-600">Nog niets ingedeeld voor deze dag.</li>}
               </ul>
             </Card>
           </div>
@@ -166,6 +192,58 @@ export default function KleedkamersPage() {
   );
 }
 
+/** Per changing room: who is in it and when. The easiest view on a phone. */
+function RoomList({ assignments, conflictIds, onOpen, canEdit }: {
+  assignments: RoomAssignment[]; conflictIds: Set<string>; onOpen: (a: RoomAssignment) => void; canEdit: boolean;
+}) {
+  const { data } = useStore();
+  return (
+    <div className="grid content-start gap-3 sm:grid-cols-2">
+      {data.rooms.map((room) => {
+        const items = assignments.filter((a) => a.roomId === room.id).sort((a, b) => a.start - b.start);
+        return (
+          <Card key={room.id} className="overflow-hidden">
+            <div className="flex items-center gap-3 border-b border-stone-100 px-4 py-3">
+              <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", room.kind === "scheidsrechter" ? "bg-stone-800 text-white" : "bg-brand-50 text-brand-700")}>
+                {room.kind === "scheidsrechter" ? <ShowerHead size={20} /> : <DoorOpen size={20} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-lg font-bold text-stone-900">{room.name}</h2>
+                <p className="text-sm text-stone-600">{room.capacity} plaatsen</p>
+              </div>
+              {!items.length && <span className="text-sm text-stone-600">Vrij</span>}
+            </div>
+            <ul className="divide-y divide-stone-100">
+              {items.map((a) => {
+                const meta = ROOM_ROLE_META[a.role];
+                const conflict = conflictIds.has(a.id);
+                const Row = canEdit ? "button" : "div";
+                return (
+                  <li key={a.id}>
+                    <Row {...(canEdit ? { onClick: () => onOpen(a) } : {})} className={cn("flex w-full items-center gap-3 px-4 py-3 text-left", canEdit && "hover:bg-stone-50 active:bg-stone-100", conflict && "bg-red-50")}>
+                      <span className="w-16 shrink-0">
+                        <span className="block text-lg leading-tight font-bold text-stone-900 tabular-nums">{fmtTime(a.start)}</span>
+                        <span className="block text-sm text-stone-600 tabular-nums">tot {fmtTime(a.end)}</span>
+                      </span>
+                      <span className="h-11 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: meta.color }} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-base font-semibold text-stone-900">{a.label}</span>
+                        <span className="block text-sm text-stone-600">{meta.label}</span>
+                        {conflict && <span className="mt-0.5 flex items-center gap-1 text-sm font-medium text-red-700"><AlertTriangle size={14} /> Overlapt met een ander team</span>}
+                      </span>
+                      {canEdit && <ChevronRight size={20} className="shrink-0 text-stone-400" />}
+                    </Row>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 function Gantt({ range, assignments, conflictIds, onOpen, onMove }: {
   range: { from: number; to: number };
   assignments: RoomAssignment[];
@@ -175,6 +253,7 @@ function Gantt({ range, assignments, conflictIds, onOpen, onMove }: {
 }) {
   const { data } = useStore();
   const body = useRef<HTMLDivElement>(null);
+  const handled = useRef(false);
   const [drag, setDrag] = useState<{ a: RoomAssignment; y0: number; dy: number; moved: boolean; row: number } | null>(null);
   const width = (range.to - range.from) * PX;
   const hours: number[] = [];
@@ -191,10 +270,10 @@ function Gantt({ range, assignments, conflictIds, onOpen, onMove }: {
     <div className="scrollbar-thin overflow-x-auto">
       <div className="min-w-max select-none" style={{ width: width + 190 }}>
         <div className="flex border-b border-stone-200 bg-white">
-          <div className="sticky left-0 z-20 w-[190px] shrink-0 bg-white px-4 py-2 text-xs font-semibold tracking-wider text-stone-400 uppercase">Kleedkamer</div>
+          <div className="sticky left-0 z-20 w-[190px] shrink-0 bg-white px-4 py-2 text-xs font-semibold tracking-wider text-stone-500 uppercase">Kleedkamer</div>
           <div className="relative h-8" style={{ width }}>
             {hours.map((h) => (
-              <span key={h} className={cn("absolute top-2 text-xs text-stone-400 tabular-nums", h > range.from && "-translate-x-1/2")} style={{ left: (h - range.from) * PX + (h === range.from ? 4 : 0) }}>{fmtTime(h)}</span>
+              <span key={h} className={cn("absolute top-2 text-xs text-stone-500 tabular-nums", h > range.from && "-translate-x-1/2")} style={{ left: (h - range.from) * PX + (h === range.from ? 4 : 0) }}>{fmtTime(h)}</span>
             ))}
           </div>
         </div>
@@ -204,6 +283,7 @@ function Gantt({ range, assignments, conflictIds, onOpen, onMove }: {
           onPointerMove={(e) => drag && setDrag({ ...drag, dy: e.clientY - drag.y0, row: rowAt(e.clientY), moved: drag.moved || Math.abs(e.clientY - drag.y0) > 6 })}
           onPointerUp={() => {
             if (!drag) return;
+            handled.current = true;
             setDrag(null);
             if (!drag.moved) return onOpen(drag.a);
             if (targetRoom && targetRoom.id !== drag.a.roomId) onMove(drag.a, targetRoom.id);
@@ -221,7 +301,7 @@ function Gantt({ range, assignments, conflictIds, onOpen, onMove }: {
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{room.name}</p>
-                    <p className="flex items-center gap-1 text-xs text-stone-400"><Users size={11} /> {room.capacity}</p>
+                    <p className="flex items-center gap-1 text-xs text-stone-500"><Users size={11} /> {room.capacity}</p>
                   </div>
                 </div>
                 <div className="relative" style={{ width }}>
@@ -238,12 +318,19 @@ function Gantt({ range, assignments, conflictIds, onOpen, onMove }: {
                         tabIndex={0}
                         onPointerDown={(e) => {
                           if (e.button !== 0) return;
+                          // Touch: a tap opens the block; dragging would fight with scrolling
+                          if (e.pointerType === "touch") return;
                           (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                           setDrag({ a, y0: e.clientY, dy: 0, moved: false, row: rowAt(e.clientY) });
                         }}
                         onKeyDown={(e) => e.key === "Enter" && onOpen(a)}
+                        onClick={() => {
+                          // Mouse clicks and drags are already handled on pointer-up; this is for touch taps
+                          if (handled.current) handled.current = false;
+                          else onOpen(a);
+                        }}
                         className={cn(
-                          "absolute top-1.5 bottom-1.5 cursor-grab touch-none overflow-hidden rounded-lg border-l-4 px-2 py-1 text-xs shadow-sm hover:shadow-md",
+                          "absolute top-1.5 bottom-1.5 cursor-pointer touch-manipulation overflow-hidden rounded-lg border-l-4 px-2 py-1 text-xs shadow-sm hover:shadow-md",
                           conflictIds.has(a.id) && "conflict-ring",
                         )}
                         style={{

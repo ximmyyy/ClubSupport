@@ -17,7 +17,16 @@
 | **TV-scherm** (`/scherm`) | Groot scherm voor de kantine: programma van vandaag met velden en kleedkamers, live veldkaarten en een melding als een veld is afgekeurd. |
 | **Instellingen** | Club, velden (ondergrond, verlichting), kleedkamers (capaciteit, scheidsrechters) en planningsregels. Gegevens exporteren en importeren als JSON. |
 
-Overal: **ongedaan maken** via de melding na elke actie, en een mobielvriendelijke layout met een navigatiebalk onderin.
+Overal: **ongedaan maken** via de melding na elke actie, en een bevestigingsvraag voordat er iets wordt verwijderd.
+
+### Gemaakt voor de telefoon en voor niet-technische gebruikers
+
+- **Tabbalk onderin** met de vier meest gebruikte pagina's en *Meer* voor de rest; houdt rekening met de schermrand van de iPhone.
+- **Lijstweergave** voor velden en kleedkamers (standaard op telefoon en tablet): per veld of kleedkamer wie er wanneer staat, met één tik te wijzigen. De tijdlijn met slepen blijft beschikbaar op grotere schermen.
+- **Grote bedieningselementen:** knoppen en invoervelden van minimaal 44 pixels hoog, tekstvakken met 16-pixel-tekst (voorkomt inzoomen op de iPhone), formulieren als paneel onderin dat boven het toetsenbord blijft.
+- **Tekstgrootte instelbaar** (Normaal, Groot, Extra groot) via het menu of Instellingen.
+- **Aan de slag:** een nieuwe club krijgt een stappenplan (velden, kleedkamers, teams, trainingen, wedstrijden) en kan voorbeeldgegevens laden om te oefenen.
+- **Gewone taal** in plaats van jargon, voldoende kleurcontrast en lege pagina's die uitleggen wat de volgende stap is.
 
 ## Twee manieren om de app te gebruiken
 

@@ -14,7 +14,7 @@ import { Button, FormField, Input } from "./ui";
 
 export function Loading({ dark }: { dark?: boolean }) {
   return (
-    <div className={`flex min-h-screen items-center justify-center ${dark ? "bg-brand-950 text-brand-200" : "text-stone-500"}`}>
+    <div className={`flex min-h-dvh items-center justify-center ${dark ? "bg-brand-950 text-brand-200" : "text-stone-600"}`}>
       <div className="flex animate-pulse items-center gap-3">
         <LogoMark size={36} /> Club Support laden…
       </div>
@@ -55,7 +55,7 @@ export function ClubGate({ children, dark }: { children: React.ReactNode; dark?:
 
 function AuthShell({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
-    <div className="grass flex min-h-screen items-center justify-center p-4">
+    <div className="grass flex min-h-dvh items-center justify-center p-4">
       <div className={`w-full ${wide ? "max-w-lg" : "max-w-md"} rounded-3xl bg-white p-6 shadow-2xl sm:p-8`}>
         <Link href="/" className="mb-6 flex items-center gap-2">
           <LogoMark size={36} />
@@ -112,7 +112,7 @@ function LoginScreen() {
           <Button type="submit" variant="primary" className="mt-4 w-full" disabled={busy || !email}>
             {busy ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />} Stuur inloglink
           </Button>
-          <div className="my-6 flex items-center gap-3 text-xs text-stone-400"><span className="h-px flex-1 bg-stone-200" /> of <span className="h-px flex-1 bg-stone-200" /></div>
+          <div className="my-6 flex items-center gap-3 text-xs text-stone-500"><span className="h-px flex-1 bg-stone-200" /> of <span className="h-px flex-1 bg-stone-200" /></div>
           <Button type="button" className="w-full" onClick={startDemo}><Sparkles size={16} /> Bekijk de demo zonder account</Button>
         </form>
       )}
@@ -160,10 +160,10 @@ function Onboarding({ email }: { email: string }) {
 
   const option = (value: StartWith, title: string, text: string) => (
     <label className={`flex cursor-pointer gap-3 rounded-xl border p-3 ${start === value ? "border-brand-300 bg-brand-50/60" : "border-stone-200"}`}>
-      <input type="radio" name="start" checked={start === value} onChange={() => setStart(value)} className="mt-1 accent-brand-600" />
+      <input type="radio" name="start" checked={start === value} onChange={() => setStart(value)} className="mt-0.5 h-5 w-5 shrink-0 accent-brand-600" />
       <span>
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="text-xs text-stone-500">{text}</span>
+        <span className="block text-base font-semibold text-stone-900">{title}</span>
+        <span className="text-sm text-stone-600">{text}</span>
       </span>
     </label>
   );
@@ -192,7 +192,7 @@ function Onboarding({ email }: { email: string }) {
         </div>
         {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <button type="button" onClick={signOut} className="flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-800"><LogOut size={14} /> Uitloggen</button>
+          <button type="button" onClick={signOut} className="flex items-center gap-1.5 text-sm text-stone-600 hover:text-stone-800"><LogOut size={14} /> Uitloggen</button>
           <Button type="submit" variant="primary" disabled={busy || name.length < 2}>
             {busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />} Club aanmaken
           </Button>

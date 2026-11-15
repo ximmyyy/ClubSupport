@@ -29,6 +29,39 @@
 
 html {
   color-scheme: light;
+  /* Keep text size stable when a phone rotates */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Bottom spacing that respects the iPhone home indicator */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+button,
+a,
+select,
+label,
+summary {
+  /* No grey flash and no 300 ms delay on taps */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body {
@@ -75,9 +108,25 @@ body {
 }
 .animate-pop { animation: pop-in 0.15s ease-out; }
 
+@keyframes sheet-in {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-sheet { animation: sheet-in 0.2s ease-out; }
+@media (min-width: 640px) {
+  .animate-sheet { animation: pop-in 0.15s ease-out; }
+}
+
 @media print {
   .no-print { display: none !important; }
   .print-only { display: block !important; }
   body { background: #fff; }
 }
 .print-only { display: none; }
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

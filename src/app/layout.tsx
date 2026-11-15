@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -9,6 +9,14 @@ export const metadata: Metadata = {
   title: { default: "Club Support", template: "%s · Club Support" },
   description:
     "Club Support: veldbezetting, kleedkamerindeling, wedstrijdplanning en vrijwilligersroosters voor amateurverenigingen. Weg met de Excel-sheets.",
+};
+
+// viewport-fit=cover lets the app draw under the iPhone home indicator; we pad with safe-area insets ourselves.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#061f15",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

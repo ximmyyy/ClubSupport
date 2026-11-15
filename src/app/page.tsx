@@ -28,9 +28,9 @@ export default function LandingPage() {
             <a href="#sporten" className="hover:text-stone-900">Sporten</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/app" className="rounded-lg px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Inloggen</Link>
-            <Link href="/demo" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
-              Open de demo <ArrowRight size={16} />
+            <Link href="/app" className="flex min-h-11 items-center rounded-xl px-3 text-base font-semibold whitespace-nowrap text-stone-800 hover:bg-stone-100 sm:text-sm">Inloggen</Link>
+            <Link href="/demo" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 text-base font-semibold whitespace-nowrap text-white shadow-sm hover:bg-brand-700 sm:text-sm">
+              <span className="sm:hidden">Demo</span><span className="hidden sm:inline">Open de demo</span> <ArrowRight size={16} />
             </Link>
           </div>
         </div>
@@ -74,7 +74,7 @@ export default function LandingPage() {
               />
             </div>
             <div className="absolute -bottom-6 -left-4 hidden w-64 -rotate-2 rounded-2xl bg-white p-4 text-stone-900 shadow-2xl sm:block">
-              <p className="text-xs font-semibold text-stone-400 uppercase">Kleedkamers 09:15</p>
+              <p className="text-xs font-semibold text-stone-500 uppercase">Kleedkamers 09:15</p>
               {[["KK 1", "JO13-2", "#1baf7a"], ["KK 2", "RKSV Oranje Noord", "#eb6834"], ["Scheids 1", "Scheidsrechter", "#52514e"]].map(([room, who, c]) => (
                 <div key={room} className="mt-2 flex items-center gap-2 text-sm">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c }} />
@@ -114,7 +114,7 @@ export default function LandingPage() {
 
       <section id="functies" className="mx-auto max-w-6xl px-4 pb-16 md:px-6">
         <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Alles voor het wedstrijdsecretariaat</h2>
-        <p className="mt-2 max-w-2xl text-stone-500">Gebouwd rond hoe een amateurclub écht werkt: kwart, half en heel veld, KNVB-leeftijdscategorieën, wisselende vrijwilligers.</p>
+        <p className="mt-2 max-w-2xl text-stone-600">Gebouwd rond hoe een amateurclub écht werkt: kwart, half en heel veld, KNVB-leeftijdscategorieën, wisselende vrijwilligers.</p>
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, text }) => (
             <div key={title} className="rounded-2xl border border-stone-200 p-6 transition-shadow hover:shadow-lg">
@@ -186,7 +186,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-stone-100 py-8 text-center text-sm text-stone-500">
+      <footer className="border-t border-stone-100 py-8 text-center text-sm text-stone-600">
         <div className="flex justify-center"><Logo /></div> <p className="mt-2">© {"2026"} Club Support · Gemaakt voor de vrijwilligers die de club draaiende houden.</p>
       </footer>
     </div>
