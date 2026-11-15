@@ -1,18 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AccountProvider } from "@/components/account";
+import { ClubGate } from "@/components/club-gate";
 import { LogoMark } from "@/components/logo";
 import { Pitch } from "@/components/pitch";
 import { CATEGORY_META } from "@/lib/meta";
 import { fieldSlotsForDate, isFieldClosed, sectionsLabel } from "@/lib/planning";
-import { StoreProvider, useLookups, useStore } from "@/lib/store";
+import { useLookups, useStore } from "@/lib/store";
 import { cap, fmtTime, formatDate, nowMinutes, todayISO } from "@/lib/time";
 
 export function TvScreen() {
   return (
-    <StoreProvider fallback={<div className="min-h-screen bg-brand-950" />}>
-      <Screen />
-    </StoreProvider>
+    <AccountProvider>
+      <ClubGate dark>
+        <Screen />
+      </ClubGate>
+    </AccountProvider>
   );
 }
 

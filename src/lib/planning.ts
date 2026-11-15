@@ -2,6 +2,7 @@ import { FIELD_NEED_META, SECTION_LABELS, teamAge } from "./meta";
 import type {
   AppData, Booking, Duty, FieldClosure, FieldNeed, Match, RoomAssignment, RoomRole, Team,
 } from "./types";
+import { uid } from "./id";
 import { fmtTime, overlaps, weekdayOf } from "./time";
 
 /* ------------------------------------------------------------------ */
@@ -321,7 +322,7 @@ export function demandKey(a: RoomAssignment): string {
  * Greedy interval scheduling: earliest demand first, best-fitting free room
  * (smallest room that fits the squad, referee rooms for referees).
  */
-export function autoAssignRooms(data: AppData, date: string) {
+export function autoAssignRooms(data: AppData, date: string, newId: () => string = uid) {
   const demands = roomDemandsForDate(data, date);
   const buffer = data.club.roomBuffer;
   const result: RoomAssignment[] = [];
@@ -343,7 +344,7 @@ export function autoAssignRooms(data: AppData, date: string) {
       continue;
     }
     result.push({
-      id: `ra-${date}-${d.key}`,
+      id: newId(),
       roomId: room.id, date, start: d.start, end: d.end, role: d.role,
       teamId: d.teamId, matchId: d.matchId, label: d.label,
     });

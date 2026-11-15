@@ -18,21 +18,45 @@
 
 Overal: **ongedaan maken** via de melding na elke actie, en een mobielvriendelijke layout met een navigatiebalk onderin.
 
-## Demo
+## Twee manieren om de app te gebruiken
 
-De app start met een fictieve club (*VV De Zwaluwen*: 21 teams, 4 velden, 10 kleedkamers) en een volledig ingepland seizoen ten opzichte van de huidige datum. Er zit bewust één dubbele boeking in (keeperstraining op woensdag) om de conflictdetectie te laten zien. Alles wordt bewaard in `localStorage` van je browser; via *Instellingen → Demo opnieuw laden* begin je opnieuw.
+**Met je club (Supabase).** Inloggen gaat met een inloglink per e-mail, zonder wachtwoord. Na de eerste keer inloggen maak je een club aan (leeg, met voorbeelddata of met je demo-gegevens) en word je beheerder. Via *Instellingen → Leden & rechten* nodig je anderen uit als **beheerder**, **planner** of **alleen lezen**. Ze worden automatisch lid zodra ze inloggen met dat e-mailadres. Wijzigingen worden direct opgeslagen; andere geopende schermen (zoals het TV-scherm) werken realtime bij.
+
+**Demo.** Via */demo* of de knop op het inlogscherm, zonder account. Je krijgt een fictieve club (*VV De Zwaluwen*: 21 teams, 4 velden, 10 kleedkamers) met een volledig ingepland seizoen. Er zit bewust één dubbele boeking in (keeperstraining op woensdag) om de conflictdetectie te laten zien. Alles blijft in de `localStorage` van je browser.
+
+## Backend: Supabase
+
+- Project **clubsupport**, regio `eu-central-1` (Frankfurt). Gegevens van leden en jeugdspelers blijven in de EU.
+- **Multi-tenant:** alle clubs in één database; elke tabel heeft een `club_id`. Row level security bepaalt op basis van de tabel `memberships` wie wat mag:
+
+  | Rol | Lezen | Planning en instellingen wijzigen | Leden beheren |
+  | --- | :-: | :-: | :-: |
+  | Beheerder | ✅ | ✅ | ✅ |
+  | Planner | ✅ | ✅ | – |
+  | Alleen lezen | ✅ | – | – |
+
+  Verwijzingen tussen tabellen zijn samengestelde foreign keys op `(club_id, id)`, zodat een rij nooit naar data van een andere club kan wijzen. De laatste beheerder van een club kan niet worden verwijderd.
+- **Schema:** `supabase/migrations/`. De isolatietest staat in `supabase/tests/rls_isolation.sql` (draait volledig in een transactie die wordt teruggedraaid).
+- **App-koppeling:** `src/lib/cloud.ts` (laden, opslaan, leden) en `src/lib/repository.ts` (vertaling tussen app-model en tabellen, en het omzetten van een wijziging naar de minimale set inserts, updates en deletes). Pagina's praten nooit rechtstreeks met Supabase.
+- **Configuratie:** `.env.example` bevat de project-URL en de *publishable key*. Die key is bedoeld voor de browser; de beveiliging zit in RLS. Zonder deze variabelen draait de app alleen in demomodus.
+
+### Nog in te stellen in het Supabase-dashboard
+
+1. **Authentication → URL Configuration:** zet de *Site URL* op het uiteindelijke domein en voeg `http://localhost:3000/**` en het productiedomein (bijv. `https://jouwdomein.nl/**`) toe aan *Redirect URLs*. Tot die tijd komt een inloglink op de Site URL uit; de landingspagina stuurt hem dan door naar `/app`.
+2. **Authentication → Emails → SMTP Settings:** de ingebouwde mailserver van Supabase verstuurt maar enkele mails per uur en alleen naar leden van je Supabase-organisatie. Koppel voor echte clubs een eigen SMTP-dienst (bijv. Resend, Postmark of Brevo) en pas de e-mailtemplate aan naar het Nederlands.
 
 ## Ontwikkelen
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000 (landingspagina), /app (applicatie), /scherm (TV)
+cp .env.example .env.local   # Supabase-koppeling (weglaten = alleen demo)
+npm run dev        # http://localhost:3000 (landingspagina), /app (applicatie), /demo, /scherm (TV)
 npm test           # unit tests voor de planningslogica
 npm run lint
 npm run build
 ```
 
-Stack: [Next.js 16](https://nextjs.org) (App Router), React 19, TypeScript, Tailwind CSS 4 en lucide-react.
+Stack: [Next.js 16](https://nextjs.org) (App Router), React 19, TypeScript, Tailwind CSS 4, lucide-react en [Supabase](https://supabase.com) (Postgres, Auth, Realtime).
 
 ### Structuur
 
@@ -48,19 +72,26 @@ src/
     planning.ts           planningslogica: conflictdetectie, vrije plek zoeken, aftraptijden optimaliseren,
                           kleedkamers indelen, diensten genereren en verdelen
     seed.ts               demodata
-    store.tsx             state, persistentie en undo
-    planning.test.ts      tests
+    store.tsx             state, opslaan (browser of Supabase), realtime en undo
+    supabase.ts           Supabase-client
+    cloud.ts              laden/opslaan per club, leden en uitnodigingen
+    repository.ts         app-model <-> tabellen, wijzigingen als diff
+    *.test.ts             tests
+supabase/
+  migrations/             databaseschema met RLS
+  tests/                  isolatietest tussen clubs
 ```
 
 Alle planningslogica staat los van de UI in `src/lib/planning.ts`. Die kan dus ongewijzigd naar een server of edge function verhuizen.
 
 ## Volgende stappen (voorstel)
 
-1. **Backend en multi-tenant:** Supabase (Postgres en Auth) met een `club_id` op elke tabel en row-level security, zodat meerdere clubs op één installatie draaien. De `AppData`-structuur vertaalt zich één-op-één naar tabellen.
-2. **Rollen:** bestuur/wedstrijdsecretaris (alles), trainer (eigen team, trainingen ruilen), vrijwilliger (diensten inschrijven), ouder/speler (alleen lezen).
-3. **Sportlink-koppeling:** het wedstrijdprogramma automatisch ophalen in plaats van plakken.
-4. **Notificaties:** push en e-mail bij afgelastingen, gewijzigde kleedkamers of een open dienst.
-5. **Ruilverzoeken:** trainers vragen een ander veld of tijdstip aan en de wedstrijdsecretaris keurt goed.
-6. **Kantine en sponsoren:** sponsorlogo's tussendoor op het TV-scherm, uitslagen live bijwerken.
-7. **Meer sporten:** sportprofielen (veldindeling, wedstrijdduur, categorieën) voor hockey, korfbal en handbal.
-8. **Abonnementen:** prijsmodel per club (bijv. naar aantal teams), proefperiode en facturatie.
+1. **Hosting:** de app op Vercel zetten, eigen domein koppelen en de redirect-URL's en SMTP in Supabase instellen (zie hierboven).
+2. **Meer rollen:** trainer (eigen team, trainingen ruilen), vrijwilliger (diensten inschrijven), ouder/speler (alleen lezen). Plus een TV-scherm dat met een geheime link werkt in plaats van een ingelogd account.
+3. **Schaal:** nu wordt bij openen de hele club geladen. Bij meerdere seizoenen alleen een datumvenster laden.
+4. **Sportlink-koppeling:** het wedstrijdprogramma automatisch ophalen in plaats van plakken.
+5. **Notificaties:** push en e-mail bij afgelastingen, gewijzigde kleedkamers of een open dienst.
+6. **Ruilverzoeken:** trainers vragen een ander veld of tijdstip aan en de wedstrijdsecretaris keurt goed.
+7. **Kantine en sponsoren:** sponsorlogo's tussendoor op het TV-scherm, uitslagen live bijwerken.
+8. **Meer sporten:** sportprofielen (veldindeling, wedstrijdduur, categorieën) voor hockey, korfbal en handbal.
+9. **Abonnementen:** prijsmodel per club (bijv. naar aantal teams), proefperiode en facturatie.

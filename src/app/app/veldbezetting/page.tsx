@@ -138,6 +138,8 @@ export default function VeldbezettingPage() {
           <Button onClick={() => setClosureOpen(true)}><CloudRain size={16} /> Veld afkeuren</Button>
           <Button
             variant="primary"
+            disabled={!data.fields.length}
+            title={data.fields.length ? undefined : "Voeg eerst een veld toe bij Instellingen"}
             onClick={() => setDraft({ kind: "training", fieldId: data.fields[0]?.id ?? "", sections: [0, 1], start: weekend ? 600 : 1080, end: weekend ? 660 : 1170, recurring: !weekend })}
           >
             <Plus size={16} /> Reservering

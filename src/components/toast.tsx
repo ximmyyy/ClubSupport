@@ -9,12 +9,17 @@ const ToastContext = createContext<(message: string, opts?: { undo?: boolean }) 
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const { undo } = useStore();
+  const { undo, canEdit } = useStore();
   const push = useCallback((message: string, opts?: { undo?: boolean }) => {
     const id = Date.now() + Math.random();
+    // Mutations are blocked for read-only members: say so instead of confirming a change that did not happen
+    if (opts?.undo && !canEdit) {
+      message = "Je hebt alleen leesrechten; er is niets gewijzigd";
+      opts = { undo: false };
+    }
     setToasts((t) => [...t.slice(-2), { id, message, undo: opts?.undo }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
-  }, []);
+  }, [canEdit]);
   return (
     <ToastContext.Provider value={push}>
       {children}

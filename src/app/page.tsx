@@ -2,6 +2,7 @@ import {
   ArrowRight, BellRing, CalendarCheck2, CloudRain, DoorOpen, FileSpreadsheet, HandHeart, LayoutGrid, MonitorPlay, Smartphone, Sparkles, Wand2,
 } from "lucide-react";
 import Link from "next/link";
+import { AuthRedirect } from "@/components/auth-redirect";
 import { Logo } from "@/components/logo";
 import { Pitch } from "@/components/pitch";
 
@@ -17,6 +18,7 @@ const FEATURES = [
 export default function LandingPage() {
   return (
     <div className="bg-white">
+      <AuthRedirect />
       <header className="sticky top-0 z-30 border-b border-stone-100 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6">
           <Logo />
@@ -25,9 +27,12 @@ export default function LandingPage() {
             <a href="#hoe" className="hover:text-stone-900">Hoe het werkt</a>
             <a href="#sporten" className="hover:text-stone-900">Sporten</a>
           </nav>
-          <Link href="/app" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
-            Open de demo <ArrowRight size={16} />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/app" className="rounded-lg px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Inloggen</Link>
+            <Link href="/demo" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
+              Open de demo <ArrowRight size={16} />
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -44,14 +49,14 @@ export default function LandingPage() {
               Club Support is het digitale wedstrijdsecretariaat voor je vereniging. Veldbezetting, kleedkamerindeling, wedstrijden en vrijwilligers in één overzichtelijke app, gemaakt voor vrijwilligers zonder handleiding.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/app" className="inline-flex items-center gap-2 rounded-xl bg-brand-400 px-5 py-3 font-semibold text-brand-950 hover:bg-brand-300">
+              <Link href="/demo" className="inline-flex items-center gap-2 rounded-xl bg-brand-400 px-5 py-3 font-semibold text-brand-950 hover:bg-brand-300">
                 Probeer de demo <ArrowRight size={18} />
               </Link>
-              <Link href="/scherm" className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-5 py-3 font-semibold text-white hover:bg-white/15">
-                <MonitorPlay size={18} /> Bekijk het TV-scherm
+              <Link href="/app" className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-5 py-3 font-semibold text-white hover:bg-white/15">
+                Inloggen met je club
               </Link>
             </div>
-            <p className="mt-4 text-sm text-brand-100/50">Geen account nodig: de demo draait volledig in je browser.</p>
+            <p className="mt-4 text-sm text-brand-100/50">Geen account nodig voor de demo. Met je club inloggen gaat met een inloglink per e-mail, zonder wachtwoord.</p>
           </div>
           <div className="relative">
             <div className="rotate-1 rounded-3xl bg-white/5 p-4 shadow-2xl ring-1 ring-white/10">
@@ -175,7 +180,7 @@ export default function LandingPage() {
         <div className="grass mx-auto max-w-6xl rounded-3xl px-6 py-14 text-center text-white">
           <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">Klaar met de Excel-sheet?</h2>
           <p className="mx-auto mt-3 max-w-xl text-white/85">Speel met de demo van een fictieve club met 21 teams, 4 velden en 10 kleedkamers.</p>
-          <Link href="/app" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-semibold text-brand-800 hover:bg-brand-50">
+          <Link href="/demo" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-semibold text-brand-800 hover:bg-brand-50">
             Open de demo <ArrowRight size={18} />
           </Link>
         </div>

@@ -1,14 +1,17 @@
 "use client";
 
 import {
-  CalendarDays, DoorOpen, HandHeart, LayoutDashboard, LayoutGrid, Menu, Settings, Tv, Users, X,
+  AlertCircle, CalendarDays, Check, CloudUpload, DoorOpen, Eye, HandHeart, LayoutDashboard, LayoutGrid, LogIn, LogOut, Menu, Settings, Tv, Users, X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useState } from "react";
-import { StoreProvider, useStore } from "@/lib/store";
+import { ROLE_LABELS } from "@/lib/cloud";
+import { useStore } from "@/lib/store";
 import { todayISO } from "@/lib/time";
-import { Logo, LogoMark } from "./logo";
+import { AccountProvider, useAccount } from "./account";
+import { ClubGate } from "./club-gate";
+import { Logo } from "./logo";
 import { ToastProvider } from "./toast";
 import { cn } from "./ui";
 
@@ -30,25 +33,47 @@ function DateProvider({ children }: { children: React.ReactNode }) {
   return <DateContext.Provider value={state}>{children}</DateContext.Provider>;
 }
 
-function Loading() {
+export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="flex animate-pulse items-center gap-3 text-stone-500">
-        <LogoMark size={36} /> Club Support laden…
-      </div>
-    </div>
+    <AccountProvider>
+      <ClubGate>
+        <ToastProvider>
+          <DateProvider>
+            <Frame>{children}</Frame>
+          </DateProvider>
+        </ToastProvider>
+      </ClubGate>
+    </AccountProvider>
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+function SyncBadge() {
+  const { source, sync, syncError, canEdit } = useStore();
+  if (source.kind === "demo") return null;
+  if (!canEdit) return <span className="flex items-center gap-1 text-xs text-amber-200"><Eye size={12} /> Alleen lezen</span>;
+  if (sync === "saving") return <span className="flex items-center gap-1 text-xs text-brand-100/70"><CloudUpload size={12} className="animate-pulse" /> Opslaan…</span>;
+  if (sync === "error") return <span className="flex items-center gap-1 text-xs text-red-300" title={syncError ?? ""}><AlertCircle size={12} /> Niet opgeslagen</span>;
+  return <span className="flex items-center gap-1 text-xs text-brand-100/60"><Check size={12} /> Opgeslagen</span>;
+}
+
+function AccountFooter() {
+  const { state, signOut, leaveDemo, cloudAvailable } = useAccount();
+  if (state.status === "demo") {
+    return (
+      <div className="mt-auto rounded-xl bg-white/6 p-3 text-xs text-brand-100/70">
+        <p>Je bekijkt de demo. Gegevens blijven in deze browser.</p>
+        {cloudAvailable && (
+          <button onClick={leaveDemo} className="mt-2 flex items-center gap-1.5 font-semibold text-brand-200 hover:text-white"><LogIn size={14} /> Inloggen met je club</button>
+        )}
+      </div>
+    );
+  }
+  if (state.status !== "club") return null;
   return (
-    <StoreProvider fallback={<Loading />}>
-      <ToastProvider>
-        <DateProvider>
-          <Frame>{children}</Frame>
-        </DateProvider>
-      </ToastProvider>
-    </StoreProvider>
+    <div className="mt-auto flex items-center justify-between gap-2 px-2">
+      <span className="truncate text-xs text-brand-100/60" title={state.email}>{state.email}</span>
+      <button onClick={signOut} className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs text-brand-100/70 hover:bg-white/6 hover:text-white"><LogOut size={14} /> Uitloggen</button>
+    </div>
   );
 }
 
@@ -88,6 +113,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 function Frame({ children }: { children: React.ReactNode }) {
   const { data } = useStore();
+  const { state, switchClub } = useAccount();
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const initials = data.club.shortName.slice(0, 2).toUpperCase();
@@ -95,9 +121,23 @@ function Frame({ children }: { children: React.ReactNode }) {
   const clubCard = (
     <div className="flex items-center gap-3 rounded-xl bg-white/6 p-3">
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-400 text-sm font-bold text-brand-950">{initials}</div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-white">{data.club.name}</p>
-        <p className="truncate text-xs text-brand-100/60">{data.club.city} · voetbal</p>
+      <div className="min-w-0 flex-1">
+        {state.status === "club" && state.clubs.length > 1 ? (
+          <select
+            value={state.active.clubId}
+            onChange={(e) => switchClub(e.target.value)}
+            className="w-full truncate rounded bg-transparent text-sm font-semibold text-white focus:outline-none [&>option]:text-stone-900"
+            aria-label="Wissel van club"
+          >
+            {state.clubs.map((c) => <option key={c.clubId} value={c.clubId}>{c.name}</option>)}
+          </select>
+        ) : (
+          <p className="truncate text-sm font-semibold text-white">{data.club.name}</p>
+        )}
+        <p className="truncate text-xs text-brand-100/60">
+          {state.status === "club" ? ROLE_LABELS[state.active.role] : "Demo"} · {data.club.city || "voetbal"}
+        </p>
+        <div className="mt-1"><SyncBadge /></div>
       </div>
     </div>
   );
@@ -111,7 +151,7 @@ function Frame({ children }: { children: React.ReactNode }) {
         </Link>
         {clubCard}
         <NavLinks />
-        <p className="mt-auto px-2 text-xs text-brand-100/40">Demo-omgeving · gegevens blijven in deze browser</p>
+        <AccountFooter />
       </aside>
 
       {/* Mobile drawer */}
@@ -125,6 +165,7 @@ function Frame({ children }: { children: React.ReactNode }) {
             </div>
             {clubCard}
             <NavLinks onNavigate={() => setOpen(false)} />
+            <AccountFooter />
           </aside>
         </div>
       )}

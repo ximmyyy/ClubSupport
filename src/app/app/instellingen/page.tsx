@@ -2,15 +2,18 @@
 
 import { Download, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useRef } from "react";
+import { MembersCard } from "@/components/members-card";
 import { useToast } from "@/components/toast";
 import { Button, Card, CardHeader, FormField, Input, PageHeader, Select } from "@/components/ui";
+import { remapIds } from "@/lib/repository";
 import { uid } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import { todayISO } from "@/lib/time";
 import type { AppData, Club, Field, Room } from "@/lib/types";
 
 export default function InstellingenPage() {
-  const { data, update, reset, replace } = useStore();
+  const { data, update, reset, replace, source, canEdit } = useStore();
+  const cloud = source.kind === "cloud";
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -46,7 +49,7 @@ export default function InstellingenPage() {
     try {
       const parsed = JSON.parse(await file.text()) as AppData;
       if (parsed.version !== 1 || !Array.isArray(parsed.teams)) throw new Error("bad");
-      replace(parsed);
+      replace(cloud ? { ...remapIds(parsed), club: data.club } : parsed);
       toast("Gegevens geïmporteerd", { undo: true });
     } catch {
       toast("Dit bestand is geen geldige Club Support-export");
@@ -55,7 +58,8 @@ export default function InstellingenPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Beheer" title="Instellingen" description="Clubgegevens, velden, kleedkamers en planningsregels." />
+      <PageHeader eyebrow="Beheer" title="Instellingen" description="Clubgegevens, velden, kleedkamers, planningsregels en leden." />
+      {!canEdit && <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">Je hebt alleen leesrechten in deze club. Vraag een beheerder om je rol aan te passen.</p>}
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader title="Club" />
@@ -123,13 +127,15 @@ export default function InstellingenPage() {
           </div>
         </Card>
 
+        {cloud && <MembersCard />}
+
         <Card className="xl:col-span-2">
-          <CardHeader title="Gegevens" subtitle="In deze demo worden gegevens alleen in je eigen browser bewaard" />
+          <CardHeader title="Gegevens" subtitle={cloud ? "Opgeslagen in de cloud (EU). Een export is handig als eigen back-up." : "In de demo worden gegevens alleen in je eigen browser bewaard"} />
           <div className="flex flex-wrap gap-2 p-5">
             <Button onClick={exportData}><Download size={16} /> Exporteren (JSON)</Button>
             <Button onClick={() => fileRef.current?.click()}><Upload size={16} /> Importeren</Button>
             <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])} />
-            <Button variant="danger" onClick={() => { reset(); toast("Demogegevens opnieuw geladen"); }}><RotateCcw size={16} /> Demo opnieuw laden</Button>
+            {!cloud && <Button variant="danger" onClick={() => { reset(); toast("Demogegevens opnieuw geladen"); }}><RotateCcw size={16} /> Demo opnieuw laden</Button>}
           </div>
         </Card>
       </div>

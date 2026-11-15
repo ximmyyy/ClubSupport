@@ -1,16 +1,10 @@
+import { uid } from "./id";
 import { defaultsForAge, teamAge } from "./meta";
 import { autoAssignRooms, distributeDuties, findFreePlacement, generateDuties, optimizeKickoffs } from "./planning";
 import { addDays, nextWeekday, todayISO } from "./time";
 import type { AppData, Booking, Category, Field, FieldNeed, Match, Room, Team } from "./types";
 
-let counter = 0;
-export function uid(prefix = "id"): string {
-  counter += 1;
-  const rnd = typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID().slice(0, 8)
-    : Math.random().toString(36).slice(2, 10);
-  return `${prefix}-${rnd}${counter}`;
-}
+export { uid };
 
 const FIELDS: Field[] = [
   { id: "f1", name: "Veld 1", surface: "kunstgras", lit: true },
