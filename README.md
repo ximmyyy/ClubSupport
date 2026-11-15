@@ -40,9 +40,16 @@ Overal: **ongedaan maken** via de melding na elke actie, en een mobielvriendelij
 - **App-koppeling:** `src/lib/cloud.ts` (laden, opslaan, leden) en `src/lib/repository.ts` (vertaling tussen app-model en tabellen, en het omzetten van een wijziging naar de minimale set inserts, updates en deletes). Pagina's praten nooit rechtstreeks met Supabase.
 - **Configuratie:** `.env.example` bevat de project-URL en de *publishable key*. Die key is bedoeld voor de browser; de beveiliging zit in RLS. Zonder deze variabelen draait de app alleen in demomodus.
 
+## Hosting: Vercel
+
+- Project **clubsupport** in het team *ximmyyy's projects*, gekoppeld aan deze GitHub-repository. Functies draaien in Frankfurt (`fra1`).
+- Productie: **https://clubsupport-eight.vercel.app** (tijdelijk adres tot er een eigen domein is).
+- Elke push naar `main` wordt automatisch de nieuwe productieversie. Pushes naar andere branches worden *previews*; die zijn alleen te openen met een Vercel-account van het team.
+- Omgevingsvariabelen (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) staan in de projectinstellingen van Vercel.
+
 ### Nog in te stellen in het Supabase-dashboard
 
-1. **Authentication → URL Configuration:** zet de *Site URL* op het uiteindelijke domein en voeg `http://localhost:3000/**` en het productiedomein (bijv. `https://jouwdomein.nl/**`) toe aan *Redirect URLs*. Tot die tijd komt een inloglink op de Site URL uit; de landingspagina stuurt hem dan door naar `/app`.
+1. **Authentication → URL Configuration:** zet de *Site URL* op `https://clubsupport-eight.vercel.app` (later het eigen domein) en voeg `https://clubsupport-eight.vercel.app/**` en `http://localhost:3000/**` toe aan *Redirect URLs*. Tot die tijd komt een inloglink op de Site URL uit; de landingspagina stuurt hem dan door naar `/app`.
 2. **Authentication → Emails → SMTP Settings:** de ingebouwde mailserver van Supabase verstuurt maar enkele mails per uur en alleen naar leden van je Supabase-organisatie. Koppel voor echte clubs een eigen SMTP-dienst (bijv. Resend, Postmark of Brevo) en pas de e-mailtemplate aan naar het Nederlands.
 
 ## Ontwikkelen
@@ -86,7 +93,7 @@ Alle planningslogica staat los van de UI in `src/lib/planning.ts`. Die kan dus o
 
 ## Volgende stappen (voorstel)
 
-1. **Hosting:** de app op Vercel zetten, eigen domein koppelen en de redirect-URL's en SMTP in Supabase instellen (zie hierboven).
+1. **Livegang:** eigen domein koppelen in Vercel en de redirect-URL's en SMTP in Supabase instellen (zie hierboven).
 2. **Meer rollen:** trainer (eigen team, trainingen ruilen), vrijwilliger (diensten inschrijven), ouder/speler (alleen lezen). Plus een TV-scherm dat met een geheime link werkt in plaats van een ingelogd account.
 3. **Schaal:** nu wordt bij openen de hele club geladen. Bij meerdere seizoenen alleen een datumvenster laden.
 4. **Sportlink-koppeling:** het wedstrijdprogramma automatisch ophalen in plaats van plakken.
