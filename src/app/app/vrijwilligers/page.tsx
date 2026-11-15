@@ -13,7 +13,7 @@ import { fmtTime, formatDate } from "@/lib/time";
 import type { Duty, DutyRole } from "@/lib/types";
 
 export default function VrijwilligersPage() {
-  const { data, update } = useStore();
+  const { data, update, canEdit } = useStore();
   const lookups = useLookups();
   const toast = useToast();
   const [date, setDate] = useSelectedDate();
@@ -56,8 +56,8 @@ export default function VrijwilligersPage() {
         actions={<DateNavigator value={date} onChange={setDate} />}
       />
       <div className="mb-4 flex flex-wrap gap-2">
-        <Button variant="primary" onClick={generate}><Sparkles size={16} /> Diensten aanmaken</Button>
-        <Button onClick={distribute} disabled={!open}><Scale size={16} /> Open diensten verdelen over teams</Button>
+        {canEdit && <Button variant="primary" onClick={generate}><Sparkles size={16} /> Diensten aanmaken</Button>}
+        {canEdit && <Button onClick={distribute} disabled={!open}><Scale size={16} /> Open diensten verdelen over teams</Button>}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">

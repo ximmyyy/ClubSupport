@@ -123,6 +123,34 @@ export interface FieldClosure {
   reason: string;
 }
 
+export type RequestStatus = "open" | "goedgekeurd" | "afgewezen";
+
+/**
+ * A trainer's request to move a training or home match, or to get an extra training.
+ * `bookingId` / `matchId` point at what should change; neither means "extra training".
+ */
+export interface ChangeRequest {
+  id: string;
+  teamId: string;
+  bookingId?: string;
+  matchId?: string;
+  /** For trainings: only on `date`, or the weekly series from now on */
+  scope: "eenmalig" | "reeks";
+  date: string;
+  fieldId: string;
+  sections: number[];
+  start: number;
+  end: number;
+  note: string;
+  status: RequestStatus;
+  createdBy?: string;
+  createdByName: string;
+  createdAt?: string;
+  decidedByName?: string;
+  decidedAt?: string;
+  decisionNote?: string;
+}
+
 export interface AppData {
   version: 1;
   club: Club;
@@ -134,4 +162,5 @@ export interface AppData {
   roomAssignments: RoomAssignment[];
   duties: Duty[];
   closures: FieldClosure[];
+  requests: ChangeRequest[];
 }

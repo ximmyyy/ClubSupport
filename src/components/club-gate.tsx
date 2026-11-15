@@ -35,10 +35,18 @@ export function ClubGate({ children, dark }: { children: React.ReactNode; dark?:
     case "noClub":
       return <Onboarding email={state.email} />;
     case "demo":
-      return <StoreProvider source={{ kind: "demo" }} fallback={<Loading dark={dark} />}>{children}</StoreProvider>;
+      return (
+        <StoreProvider source={{ kind: "demo", me: { id: "demo-user", name: state.role === "trainer" ? "Trainer (demo)" : "Wedstrijdsecretaris (demo)", role: state.role, teamIds: state.teamIds } }} fallback={<Loading dark={dark} />}>
+          {children}
+        </StoreProvider>
+      );
     case "club":
       return (
-        <StoreProvider key={state.active.clubId} source={{ kind: "cloud", clubId: state.active.clubId, role: state.active.role }} fallback={<Loading dark={dark} />}>
+        <StoreProvider
+          key={state.active.clubId}
+          source={{ kind: "cloud", clubId: state.active.clubId, me: { id: state.userId, name: state.email, role: state.active.role, teamIds: state.active.teamIds } }}
+          fallback={<Loading dark={dark} />}
+        >
           {children}
         </StoreProvider>
       );

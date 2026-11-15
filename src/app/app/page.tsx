@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, CloudRain, DoorOpen, Gauge, HandHeart, LayoutGrid, MapPin, Trophy,
+  AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, CloudRain, DoorOpen, Gauge, HandHeart, Inbox, LayoutGrid, MapPin, Trophy,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,7 +17,7 @@ import { addDays, cap, fmtTime, formatDate, nowMinutes, startOfWeek, todayISO, W
 type Alert = { date: string; href: string; icon: React.ReactNode; text: string; tone: "red" | "amber" };
 
 export default function DashboardPage() {
-  const { data } = useStore();
+  const { data, canEdit, me } = useStore();
   const lookups = useLookups();
   const router = useRouter();
   const [, setDate] = useSelectedDate();
@@ -40,6 +40,10 @@ export default function DashboardPage() {
 
   const alerts = useMemo(() => {
     const list: Alert[] = [];
+    const open = data.requests.filter((r) => r.status === "open" && (canEdit || me.teamIds.includes(r.teamId)));
+    if (open.length) {
+      list.push({ date: today, href: "/app/verzoeken", icon: <Inbox size={16} />, text: canEdit ? `${open.length} verzoek(en) van trainers wachten op goedkeuring` : `${open.length} van jouw verzoek(en) wacht(en) op goedkeuring`, tone: "amber" });
+    }
     for (let i = 0; i < 14; i++) {
       const date = addDays(today, i);
       const slots = fieldSlotsForDate(data, date);
@@ -56,7 +60,7 @@ export default function DashboardPage() {
       }
     }
     return list;
-  }, [data, today, lookups]);
+  }, [data, today, lookups, canEdit, me.teamIds]);
 
   const upcoming = data.matches
     .filter((m) => m.date >= today && m.status !== "gespeeld")

@@ -16,7 +16,7 @@ const PX = 1.6;
 const ROW = 58;
 
 export default function KleedkamersPage() {
-  const { data, update } = useStore();
+  const { data, update, canEdit } = useStore();
   const toast = useToast();
   const [date, setDate] = useSelectedDate();
   const [edit, setEdit] = useState<Partial<RoomAssignment> | null>(null);
@@ -81,8 +81,8 @@ export default function KleedkamersPage() {
           actions={<DateNavigator value={date} onChange={setDate} />}
         />
         <div className="mb-4 flex flex-wrap gap-2">
-          <Button variant="primary" onClick={autoAssign} disabled={!demands.length}><Wand2 size={16} /> Automatisch indelen</Button>
-          <Button onClick={() => setEdit({ date, start: 18 * 60, end: 19 * 60 + 30, role: "overig", label: "", roomId: data.rooms[0]?.id })}><Plus size={16} /> Handmatig</Button>
+          {canEdit && <Button variant="primary" onClick={autoAssign} disabled={!demands.length}><Wand2 size={16} /> Automatisch indelen</Button>}
+          {canEdit && <Button onClick={() => setEdit({ date, start: 18 * 60, end: 19 * 60 + 30, role: "overig", label: "", roomId: data.rooms[0]?.id })}><Plus size={16} /> Handmatig</Button>}
           <Button onClick={copyText} disabled={!assignments.length}><ClipboardCopy size={16} /> Kopieer voor WhatsApp</Button>
           <Button onClick={() => window.print()} disabled={!assignments.length}><Printer size={16} /> Deurbordjes printen</Button>
         </div>
@@ -103,8 +103,8 @@ export default function KleedkamersPage() {
                 range={range}
                 assignments={assignments}
                 conflictIds={conflictIds}
-                onOpen={(a) => setEdit(a)}
-                onMove={moveTo}
+                onOpen={(a) => canEdit && setEdit(a)}
+                onMove={(a, roomId) => canEdit && moveTo(a, roomId)}
               />
             )}
             <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-stone-100 px-4 py-3 text-xs text-stone-600">
@@ -132,7 +132,7 @@ export default function KleedkamersPage() {
                         <Badge color={ROOM_ROLE_META[d.role].color} soft={ROOM_ROLE_META[d.role].soft}>{ROOM_ROLE_META[d.role].label}</Badge>
                       </div>
                       <p className="text-xs text-stone-500 tabular-nums">{fmtTime(d.start)}–{fmtTime(d.end)} · {d.players} pers.</p>
-                      <Select className="mt-2 h-9" value="" onChange={(e) => e.target.value && assignDemand(d, e.target.value)}>
+                      <Select className="mt-2 h-9" value="" disabled={!canEdit} onChange={(e) => e.target.value && assignDemand(d, e.target.value)}>
                         <option value="">{free.length ? `Kies kleedkamer (${free.length} vrij)…` : "Geen kleedkamer vrij"}</option>
                         {free.map((r) => <option key={r.id} value={r.id}>{r.name} · {r.capacity} pl.</option>)}
                       </Select>

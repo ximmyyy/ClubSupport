@@ -9,14 +9,15 @@ export function cn(...classes: (string | false | null | undefined)[]) {
 }
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "destructive";
   size?: "sm" | "md";
 };
 
-export function Button({ variant = "secondary", size = "md", className, ...props }: ButtonProps) {
+export function Button({ variant = "secondary", size = "md", className, type = "button", ...props }: ButtonProps) {
   return (
     <button
       {...props}
+      type={type}
       className={cn(
         "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
         size === "sm" ? "h-8 px-2.5 text-sm" : "h-10 px-3.5 text-sm",
@@ -24,6 +25,7 @@ export function Button({ variant = "secondary", size = "md", className, ...props
         variant === "secondary" && "border border-stone-200 bg-white text-stone-800 shadow-sm hover:bg-stone-50",
         variant === "ghost" && "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
         variant === "danger" && "border border-red-200 bg-white text-red-700 hover:bg-red-50",
+        variant === "destructive" && "bg-red-600 text-white shadow-sm hover:bg-red-700",
         className,
       )}
     />

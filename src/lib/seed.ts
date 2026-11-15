@@ -151,6 +151,7 @@ export function createSeedData(): AppData {
     roomAssignments: [],
     duties: [],
     closures: [{ id: uid("c"), fieldId: "f4", date: saturday, reason: "Afgekeurd door regen" }],
+    requests: [],
   };
 
   // Let the planner do the work for the upcoming match day: kick-off times, fields, changing rooms.
@@ -171,6 +172,25 @@ export function createSeedData(): AppData {
     if (i % 3 === 0 && d.role === "bardienst") return { ...d, person: names[n++ % names.length] };
     if (i % 4 === 1 && dist.has(d.id)) return { ...d, teamId: dist.get(d.id) };
     return d;
+  });
+
+  // Two open requests from trainers, to show the "Verzoeken" flow in the demo
+  const jo11 = byName("JO11-1");
+  const jo11Training = bookings.find((b) => b.teamId === jo11.id && b.weekday === 4);
+  if (jo11Training) {
+    const thursday = nextWeekday(addDays(today, 1), 4);
+    data.requests.push({
+      id: uid("r"), teamId: jo11.id, bookingId: jo11Training.id, scope: "eenmalig", date: thursday,
+      fieldId: jo11Training.fieldId, sections: jo11Training.sections, start: jo11Training.start + 30, end: jo11Training.end + 30,
+      note: "Een half uur later i.v.m. schoolreisje, kan dat?", status: "open", createdBy: "demo-trainer", createdByName: jo11.trainer,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  const jo13 = byName("JO13-2");
+  data.requests.push({
+    id: uid("r"), teamId: jo13.id, scope: "eenmalig", date: nextWeekday(addDays(today, 1), 5), fieldId: "f1", sections: [2, 3],
+    start: t("18:00"), end: t("19:15"), note: "Extra training voor de bekerwedstrijd", status: "open", createdBy: "demo-trainer2",
+    createdByName: jo13.trainer, createdAt: new Date().toISOString(),
   });
 
   return data;

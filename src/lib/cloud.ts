@@ -4,10 +4,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeChanges, rowsToData, SPECS } from "./repository";
 import type { AppData } from "./types";
 
-export type Role = "admin" | "planner" | "viewer";
-export interface ClubMembership { clubId: string; role: Role; name: string; shortName: string }
-export interface Member { userId: string; email: string; role: Role }
-export interface Invite { email: string; role: Role; createdAt: string }
+export type Role = "admin" | "planner" | "trainer" | "viewer";
+export interface ClubMembership { clubId: string; role: Role; teamIds: string[]; name: string; shortName: string }
+export interface Member { userId: string; email: string; role: Role; teamIds: string[] }
+export interface Invite { email: string; role: Role; teamIds: string[]; createdAt: string }
 
 const PAGE = 1000;
 
@@ -54,13 +54,13 @@ export async function listMyClubs(sb: SupabaseClient, userId: string): Promise<C
   await sb.rpc("accept_invites");
   const { data, error } = await sb
     .from("memberships")
-    .select("club_id, role, clubs(name, short_name)")
+    .select("club_id, role, team_ids, clubs(name, short_name)")
     .eq("user_id", userId)
     .order("created_at");
   if (error) throw error;
   return (data ?? []).map((r) => {
     const club = (Array.isArray(r.clubs) ? r.clubs[0] : r.clubs) as { name: string; short_name: string } | null;
-    return { clubId: r.club_id as string, role: r.role as Role, name: club?.name ?? "Club", shortName: club?.short_name ?? "" };
+    return { clubId: r.club_id as string, role: r.role as Role, teamIds: (r.team_ids as string[]) ?? [], name: club?.name ?? "Club", shortName: club?.short_name ?? "" };
   });
 }
 
@@ -72,19 +72,21 @@ export async function createClub(sb: SupabaseClient, name: string, shortName: st
 
 export async function listMembers(sb: SupabaseClient, clubId: string): Promise<{ members: Member[]; invites: Invite[] }> {
   const [m, i] = await Promise.all([
-    sb.from("memberships").select("user_id, email, role").eq("club_id", clubId).order("created_at"),
-    sb.from("club_invites").select("email, role, created_at").eq("club_id", clubId).order("created_at"),
+    sb.from("memberships").select("user_id, email, role, team_ids").eq("club_id", clubId).order("created_at"),
+    sb.from("club_invites").select("email, role, team_ids, created_at").eq("club_id", clubId).order("created_at"),
   ]);
   if (m.error) throw m.error;
   return {
-    members: (m.data ?? []).map((r) => ({ userId: r.user_id, email: r.email, role: r.role as Role })),
+    members: (m.data ?? []).map((r) => ({ userId: r.user_id, email: r.email, role: r.role as Role, teamIds: r.team_ids ?? [] })),
     // Non-admins cannot read invites (RLS): treat as empty
-    invites: i.error ? [] : (i.data ?? []).map((r) => ({ email: r.email, role: r.role as Role, createdAt: r.created_at })),
+    invites: i.error ? [] : (i.data ?? []).map((r) => ({ email: r.email, role: r.role as Role, teamIds: r.team_ids ?? [], createdAt: r.created_at })),
   };
 }
 
-export async function inviteMember(sb: SupabaseClient, clubId: string, email: string, role: Role, invitedBy: string) {
-  const { error } = await sb.from("club_invites").upsert({ club_id: clubId, email: email.trim().toLowerCase(), role, invited_by: invitedBy });
+export async function inviteMember(sb: SupabaseClient, clubId: string, email: string, role: Role, invitedBy: string, teamIds: string[] = []) {
+  const { error } = await sb
+    .from("club_invites")
+    .upsert({ club_id: clubId, email: email.trim().toLowerCase(), role, invited_by: invitedBy, team_ids: role === "trainer" ? teamIds : [] });
   if (error) throw error;
 }
 
@@ -98,9 +100,14 @@ export async function setMemberRole(sb: SupabaseClient, clubId: string, userId: 
   if (error) throw error;
 }
 
+export async function setMemberTeams(sb: SupabaseClient, clubId: string, userId: string, teamIds: string[]) {
+  const { error } = await sb.from("memberships").update({ team_ids: teamIds }).eq("club_id", clubId).eq("user_id", userId);
+  if (error) throw error;
+}
+
 export async function removeMember(sb: SupabaseClient, clubId: string, userId: string) {
   const { error } = await sb.from("memberships").delete().eq("club_id", clubId).eq("user_id", userId);
   if (error) throw error;
 }
 
-export const ROLE_LABELS: Record<Role, string> = { admin: "Beheerder", planner: "Planner", viewer: "Alleen lezen" };
+export const ROLE_LABELS: Record<Role, string> = { admin: "Beheerder", planner: "Planner", trainer: "Trainer", viewer: "Alleen lezen" };

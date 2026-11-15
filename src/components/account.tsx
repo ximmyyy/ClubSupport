@@ -2,15 +2,16 @@
 
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { listMyClubs, type ClubMembership } from "@/lib/cloud";
+import { listMyClubs, type ClubMembership, type Role } from "@/lib/cloud";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const MODE_KEY = "clubsupport:mode";
 const CLUB_KEY = "clubsupport:club";
+const DEMO_ROLE_KEY = "clubsupport:demo-role";
 
 export type AccountState =
   | { status: "loading" }
-  | { status: "demo" }
+  | { status: "demo"; role: Role; teamIds: string[] }
   | { status: "signedOut" }
   | { status: "error"; message: string }
   | { status: "noClub"; userId: string; email: string }
@@ -21,6 +22,8 @@ interface AccountValue {
   sb: SupabaseClient | null;
   cloudAvailable: boolean;
   startDemo: () => void;
+  /** Demo only: look at the app as another role (e.g. a trainer) */
+  setDemoRole: (role: Role, teamIds?: string[]) => void;
   leaveDemo: () => void;
   signOut: () => Promise<void>;
   switchClub: (clubId: string) => void;
@@ -28,6 +31,18 @@ interface AccountValue {
 }
 
 const AccountContext = createContext<AccountValue | null>(null);
+const DEMO: AccountState = { status: "demo", role: "admin", teamIds: [] };
+
+/** Demo state, including the role the visitor chose to look through ("Bekijk de demo als…"). */
+function demoState(): AccountState {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(DEMO_ROLE_KEY) ?? "null") as { role: Role; teamIds: string[] } | null;
+    if (saved?.role) return { status: "demo", role: saved.role, teamIds: saved.teamIds ?? [] };
+  } catch {
+    /* ignore */
+  }
+  return DEMO;
+}
 
 function readLocal(key: string) {
   try {
@@ -52,7 +67,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const resolve = useCallback(
     async (session: Session | null, preferClubId?: string) => {
       if (!sb || !session) {
-        setState(readLocal(MODE_KEY) === "demo" || !sb ? { status: "demo" } : { status: "signedOut" });
+        setState(readLocal(MODE_KEY) === "demo" || !sb ? demoState() : { status: "signedOut" });
         return;
       }
       writeLocal(MODE_KEY, "cloud");
@@ -75,7 +90,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!sb) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- no backend configured: demo only
-      setState({ status: "demo" });
+      setState(demoState());
       return;
     }
     let lastUser: string | null | undefined;
@@ -96,11 +111,16 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     cloudAvailable: isSupabaseConfigured,
     startDemo: () => {
       writeLocal(MODE_KEY, "demo");
-      setState({ status: "demo" });
+      setState(demoState());
+    },
+    setDemoRole: (role, teamIds = []) => {
+      if (state.status !== "demo") return;
+      writeLocal(DEMO_ROLE_KEY, JSON.stringify({ role, teamIds }));
+      setState({ status: "demo", role, teamIds });
     },
     leaveDemo: () => {
       writeLocal(MODE_KEY, null);
-      setState(sb ? { status: "signedOut" } : { status: "demo" });
+      setState(sb ? { status: "signedOut" } : demoState());
     },
     signOut: async () => {
       writeLocal(CLUB_KEY, null);

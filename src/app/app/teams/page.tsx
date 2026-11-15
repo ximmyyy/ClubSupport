@@ -11,7 +11,7 @@ import { cap, fmtTime, formatDate, todayISO, WEEKDAYS_SHORT } from "@/lib/time";
 import type { Category, FieldNeed, Team } from "@/lib/types";
 
 export default function TeamsPage() {
-  const { data } = useStore();
+  const { data, canEdit } = useStore();
   const lookups = useLookups();
   const [filter, setFilter] = useState<Category | "alle">("alle");
   const [edit, setEdit] = useState<Partial<Team> | null>(null);
@@ -27,7 +27,7 @@ export default function TeamsPage() {
         eyebrow="Vereniging"
         title="Teams"
         description={`${data.teams.length} teams, ${data.teams.reduce((n, t) => n + t.players, 0)} spelers. Veldbehoefte en speelduur bepalen hoe de planner wedstrijden indeelt.`}
-        actions={<Button variant="primary" onClick={() => setEdit({ category: "pupillen", players: 10, roomForTraining: false, ...defaultsForAge(10) })}><Plus size={16} /> Team</Button>}
+        actions={canEdit && <Button variant="primary" onClick={() => setEdit({ category: "pupillen", players: 10, roomForTraining: false, ...defaultsForAge(10) })}><Plus size={16} /> Team</Button>}
       />
       <div className="mb-4 overflow-x-auto">
         <Segmented
@@ -42,7 +42,7 @@ export default function TeamsPage() {
           const trainings = data.bookings.filter((b) => b.teamId === t.id && b.kind === "training" && b.weekday).sort((a, b) => a.weekday! - b.weekday!);
           const next = data.matches.filter((m) => m.teamId === t.id && m.date >= today && m.status === "gepland").sort((a, b) => a.date.localeCompare(b.date) || a.kickoff - b.kickoff)[0];
           return (
-            <Card key={t.id} className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-md" onClick={() => setEdit(t)}>
+            <Card key={t.id} className={cn("group overflow-hidden transition-shadow", canEdit && "cursor-pointer hover:shadow-md")} onClick={() => canEdit && setEdit(t)}>
               <div className="h-1.5" style={{ backgroundColor: meta.color }} />
               <div className="p-4">
                 <div className="flex items-start justify-between gap-2">

@@ -59,7 +59,7 @@ export default function InstellingenPage() {
   return (
     <>
       <PageHeader eyebrow="Beheer" title="Instellingen" description="Clubgegevens, velden, kleedkamers, planningsregels en leden." />
-      {!canEdit && <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">Je hebt alleen leesrechten in deze club. Vraag een beheerder om je rol aan te passen.</p>}
+      {!canEdit && <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">Alleen beheerders en planners kunnen instellingen wijzigen. Vraag een beheerder als je meer rechten nodig hebt.</p>}
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader title="Club" />

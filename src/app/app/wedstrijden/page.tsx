@@ -1,9 +1,10 @@
 "use client";
 
-import { Ban, CalendarDays, ClipboardCopy, DoorOpen, FileUp, MapPin, Plus, Sparkles, Trophy, Wand2 } from "lucide-react";
+import { Ban, CalendarDays, ClipboardCopy, DoorOpen, FileUp, MapPin, Pencil, Plus, RotateCcw, Send, Sparkles, Trophy, Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSelectedDate } from "@/components/app-shell";
 import { MatchModal } from "@/components/match-modal";
+import { RequestDraft, RequestModal } from "@/components/request-modal";
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, cn, EmptyState, Modal, PageHeader, Segmented } from "@/components/ui";
 import { CATEGORY_META, ROOM_ROLE_META } from "@/lib/meta";
@@ -14,10 +15,12 @@ import { cap, fmtTime, formatDate, parseTime, todayISO } from "@/lib/time";
 import type { AppData, Match } from "@/lib/types";
 
 export default function WedstrijdenPage() {
-  const { data, update } = useStore();
+  const { data, update, canEdit, me } = useStore();
   const lookups = useLookups();
   const toast = useToast();
   const [date, setDate] = useSelectedDate();
+  const [confirmCancel, setConfirmCancel] = useState<Match | null>(null);
+  const [requestDraft, setRequestDraft] = useState<RequestDraft | null>(null);
   const [tab, setTab] = useState<"programma" | "uitslagen">("programma");
   const [edit, setEdit] = useState<Partial<Match> | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
@@ -41,8 +44,7 @@ export default function WedstrijdenPage() {
       })()
     : 0;
 
-  const toggleCancel = (m: Match) => {
-    const cancel = m.status !== "afgelast";
+  const setCancelled = (m: Match, cancel: boolean) => {
     update((d) => ({
       ...d,
       matches: d.matches.map((x) => (x.id === m.id ? { ...x, status: cancel ? "afgelast" : "gepland" } : x)),
@@ -77,10 +79,12 @@ export default function WedstrijdenPage() {
         title="Wedstrijden"
         description="Het wedstrijdprogramma, met velden, kleedkamers en scheidsrechters op één plek."
         actions={
-          <>
-            <Button onClick={() => setImportOpen(true)}><FileUp size={16} /> Programma importeren</Button>
-            <Button variant="primary" onClick={() => setEdit({ date: activeDay ?? today, home: true, status: "gepland", kickoff: 600 })}><Plus size={16} /> Wedstrijd</Button>
-          </>
+          canEdit && (
+            <>
+              <Button onClick={() => setImportOpen(true)}><FileUp size={16} /> Programma importeren</Button>
+              <Button variant="primary" onClick={() => setEdit({ date: activeDay ?? today, home: true, status: "gepland", kickoff: 600 })}><Plus size={16} /> Wedstrijd</Button>
+            </>
+          )
         }
       />
 
@@ -119,7 +123,7 @@ export default function WedstrijdenPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={copyProgram}><ClipboardCopy size={16} /> Kopieer programma</Button>
-                  <Button onClick={() => setPlanOpen(true)} className="border-0 bg-white text-brand-800 hover:bg-brand-50"><Wand2 size={16} /> Plan de hele dag</Button>
+                  {canEdit && <Button onClick={() => setPlanOpen(true)} className="border-0 bg-white text-brand-800 hover:bg-brand-50"><Wand2 size={16} /> Plan de hele dag</Button>}
                 </div>
               </div>
             </Card>
@@ -168,11 +172,32 @@ export default function WedstrijdenPage() {
                       <span className="text-stone-500">Uitwedstrijd</span>
                     )}
                   </div>
-                  <div className="flex gap-1">
-                    {m.status !== "gespeeld" && (
-                      <Button size="sm" variant="ghost" onClick={() => toggleCancel(m)}>{cancelled ? "Herstellen" : "Afgelasten"}</Button>
+                  <div className="flex flex-wrap gap-1.5">
+                    {canEdit ? (
+                      <>
+                        {m.status !== "gespeeld" &&
+                          (cancelled ? (
+                            <Button size="sm" onClick={() => setCancelled(m, false)}><RotateCcw size={14} /> Herstellen</Button>
+                          ) : (
+                            <Button size="sm" variant="danger" onClick={() => setConfirmCancel(m)}><Ban size={14} /> Afgelasten</Button>
+                          ))}
+                        <Button size="sm" onClick={() => setEdit(m)}><Pencil size={14} /> Bewerken</Button>
+                      </>
+                    ) : (
+                      m.home && m.status === "gepland" && m.fieldId && m.sections && me.teamIds.includes(m.teamId) && (
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            setRequestDraft({
+                              teamId: m.teamId, matchId: m.id, scope: "eenmalig", date: m.date, fieldId: m.fieldId!, sections: m.sections!,
+                              start: m.kickoff, end: m.kickoff + (team?.matchDuration ?? 90),
+                            })
+                          }
+                        >
+                          <Send size={14} /> Wijziging aanvragen
+                        </Button>
+                      )
                     )}
-                    <Button size="sm" onClick={() => setEdit(m)}>Bewerken</Button>
                   </div>
                 </div>
               );
@@ -182,6 +207,17 @@ export default function WedstrijdenPage() {
       )}
 
       <MatchModal match={edit} onClose={() => setEdit(null)} />
+      <RequestModal draft={requestDraft} onClose={() => setRequestDraft(null)} />
+      {confirmCancel && (
+        <CancelModal
+          match={confirmCancel}
+          onClose={() => setConfirmCancel(null)}
+          onConfirm={() => {
+            setCancelled(confirmCancel, true);
+            setConfirmCancel(null);
+          }}
+        />
+      )}
       {planOpen && activeDay && <PlanDayModal date={activeDay} onClose={() => setPlanOpen(false)} />}
       {importOpen && <ImportModal onClose={() => setImportOpen(false)} />}
     </>
@@ -318,5 +354,35 @@ function PlanOption({ checked, onChange, title, children }: { checked: boolean; 
         <span className="text-sm text-stone-500">{children}</span>
       </span>
     </label>
+  );
+}
+
+function CancelModal({ match, onClose, onConfirm }: { match: Match; onClose: () => void; onConfirm: () => void }) {
+  const { data } = useStore();
+  const team = data.teams.find((t) => t.id === match.teamId);
+  const rooms = data.roomAssignments.filter((a) => a.matchId === match.id).length;
+  const title = match.home ? `${team?.name} – ${match.opponent}` : `${match.opponent} – ${team?.name}`;
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Wedstrijd afgelasten?"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Niet afgelasten</Button>
+          <Button variant="destructive" onClick={onConfirm}><Ban size={16} /> Afgelasten</Button>
+        </>
+      }
+    >
+      <p className="text-stone-700">
+        <b>{title}</b> op {formatDate(match.date, { long: true })} om {fmtTime(match.kickoff)}.
+      </p>
+      <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-stone-600">
+        {match.home && match.fieldId && <li>Het veld komt vrij in de planning.</li>}
+        {rooms > 0 && <li>{rooms} kleedkamer{rooms > 1 ? "s komen" : " komt"} vrij.</li>}
+        <li>Het TV-scherm toont de wedstrijd als afgelast.</li>
+      </ul>
+      <p className="mt-3 text-xs text-stone-500">Je kunt dit altijd terugdraaien met &quot;Herstellen&quot;. Vergeet niet de tegenstander en de KNVB te informeren.</p>
+    </Modal>
   );
 }

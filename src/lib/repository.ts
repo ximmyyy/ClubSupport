@@ -1,6 +1,6 @@
 import { uid } from "./id";
 import type {
-  AppData, Booking, Club, Duty, Field, FieldClosure, Match, Room, RoomAssignment, Team,
+  AppData, Booking, ChangeRequest, Club, Duty, Field, FieldClosure, Match, Room, RoomAssignment, Team,
 } from "./types";
 
 /* ------------------------------------------------------------------ */
@@ -8,7 +8,7 @@ import type {
 /* ------------------------------------------------------------------ */
 
 type Row = Record<string, unknown>;
-type CollectionKey = "fields" | "rooms" | "teams" | "bookings" | "matches" | "roomAssignments" | "duties" | "closures";
+type CollectionKey = "fields" | "rooms" | "teams" | "bookings" | "matches" | "roomAssignments" | "duties" | "closures" | "requests";
 
 const u = <T,>(v: T | null | undefined): T | undefined => (v === null ? undefined : v);
 const n = <T,>(v: T | undefined): T | null => (v === undefined ? null : v);
@@ -103,9 +103,26 @@ const closureSpec: Spec<FieldClosure> = {
   fromRow: (r) => ({ id: r.id as string, fieldId: r.field_id as string, date: r.date as string, reason: r.reason as string }),
 };
 
+const requestSpec: Spec<ChangeRequest> = {
+  key: "requests", table: "change_requests", order: ["date", "start_min"],
+  // created_by / created_at are filled in by the database (auth.uid(), now()) and never overwritten
+  toRow: (r, _i, club_id) => ({
+    id: r.id, club_id, team_id: r.teamId, booking_id: n(r.bookingId), match_id: n(r.matchId), scope: r.scope, date: r.date,
+    field_id: r.fieldId, sections: r.sections, start_min: r.start, end_min: r.end, note: r.note, status: r.status,
+    created_by_name: r.createdByName, decided_by_name: n(r.decidedByName), decided_at: n(r.decidedAt), decision_note: n(r.decisionNote),
+  }),
+  fromRow: (r) => clean({
+    id: r.id as string, teamId: r.team_id as string, bookingId: u(r.booking_id as string | null), matchId: u(r.match_id as string | null),
+    scope: r.scope as ChangeRequest["scope"], date: r.date as string, fieldId: r.field_id as string, sections: r.sections as number[],
+    start: r.start_min as number, end: r.end_min as number, note: r.note as string, status: r.status as ChangeRequest["status"],
+    createdBy: u(r.created_by as string | null), createdByName: r.created_by_name as string, createdAt: u(r.created_at as string | null),
+    decidedByName: u(r.decided_by_name as string | null), decidedAt: u(r.decided_at as string | null), decisionNote: u(r.decision_note as string | null),
+  }),
+};
+
 /** Parents before children: upserts run in this order, deletes in reverse. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const SPECS: Spec<any>[] = [fieldSpec, roomSpec, teamSpec, matchSpec, bookingSpec, assignmentSpec, dutySpec, closureSpec];
+export const SPECS: Spec<any>[] = [fieldSpec, roomSpec, teamSpec, matchSpec, bookingSpec, assignmentSpec, dutySpec, closureSpec, requestSpec];
 
 export function clubToRow(c: Club): Row {
   return {
@@ -123,7 +140,7 @@ export function clubFromRow(r: Row): Club {
 }
 
 export function emptyData(club: Club): AppData {
-  return { version: 1, club, fields: [], rooms: [], teams: [], bookings: [], matches: [], roomAssignments: [], duties: [], closures: [] };
+  return { version: 1, club, fields: [], rooms: [], teams: [], bookings: [], matches: [], roomAssignments: [], duties: [], closures: [], requests: [] };
 }
 
 /* ------------------------------------------------------------------ */
@@ -175,6 +192,10 @@ export function remapIds(data: AppData): AppData {
     roomAssignments: data.roomAssignments.map((a) => clean({ ...a, id: id(a.id), roomId: id(a.roomId), teamId: ref(a.teamId), matchId: ref(a.matchId) })),
     duties: data.duties.map((d) => clean({ ...d, id: id(d.id), teamId: ref(d.teamId), matchId: ref(d.matchId) })),
     closures: data.closures.map((c) => ({ ...c, id: id(c.id), fieldId: id(c.fieldId) })),
+    // created_by refers to a user of the source environment: drop it
+    requests: (data.requests ?? []).map((r) =>
+      clean({ ...r, id: id(r.id), teamId: id(r.teamId), fieldId: id(r.fieldId), bookingId: ref(r.bookingId), matchId: ref(r.matchId), createdBy: undefined }),
+    ),
   };
 }
 

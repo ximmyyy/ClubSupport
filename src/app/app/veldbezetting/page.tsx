@@ -7,6 +7,7 @@ import { useMemo, useRef, useState } from "react";
 import { useSelectedDate } from "@/components/app-shell";
 import { BookingDraft, BookingModal } from "@/components/booking-modal";
 import { MatchModal } from "@/components/match-modal";
+import { RequestDraft, RequestModal } from "@/components/request-modal";
 import { Pitch } from "@/components/pitch";
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, cn, DateNavigator, FormField, Input, Modal, PageHeader, Segmented, Select } from "@/components/ui";
@@ -17,7 +18,7 @@ import {
 import { uid } from "@/lib/seed";
 import { useLookups, useStore } from "@/lib/store";
 import { addDays, fmtTime, nowMinutes, startOfWeek, todayISO, WEEKDAYS_SHORT, weekdayOf } from "@/lib/time";
-import type { Match } from "@/lib/types";
+import type { ChangeRequest, Match } from "@/lib/types";
 
 const PX = 1.25; // pixels per minute
 const SNAP = 15;
@@ -25,6 +26,8 @@ const SNAP = 15;
 type Preview = { fieldId: string; sections: number[]; start: number; end: number };
 type DragState = {
   slot: FieldSlot;
+  /** Not allowed to move this block: a click still opens it */
+  locked: boolean;
   grabMinute: number;
   grabLaneOffset: number;
   startX: number;
@@ -34,10 +37,20 @@ type DragState = {
 };
 
 export default function VeldbezettingPage() {
-  const { data, update } = useStore();
+  const { data, update, canEdit, canRequest, me } = useStore();
   const lookups = useLookups();
   const toast = useToast();
   const [date, setDate] = useSelectedDate();
+  const [requestDraft, setRequestDraft] = useState<RequestDraft | null>(null);
+  const isOwn = (teamId?: string) => !!teamId && me.teamIds.includes(teamId);
+  const trainerOnly = !canEdit && canRequest;
+  const pending = data.requests.filter(
+    (r) => r.status === "open" && (r.date === date || (r.scope === "reeks" && r.date <= date && weekdayOf(r.date) === weekdayOf(date))),
+  );
+  const draftFromSlot = (slot: FieldSlot, p?: Preview): RequestDraft => ({
+    teamId: slot.teamId!, bookingId: slot.source === "booking" ? slot.id : undefined, matchId: slot.source === "match" ? slot.id : undefined,
+    scope: "eenmalig", date, fieldId: p?.fieldId ?? slot.fieldId, sections: p?.sections ?? slot.sections, start: p?.start ?? slot.start, end: p?.end ?? slot.end,
+  });
   const [view, setView] = useState<"tijdlijn" | "kaart">("tijdlijn");
   const [draft, setDraft] = useState<BookingDraft | null>(null);
   const [editMatch, setEditMatch] = useState<Partial<Match> | null>(null);
@@ -60,6 +73,11 @@ export default function VeldbezettingPage() {
   }, [slots, weekend]);
 
   const openSlot = (slot: FieldSlot) => {
+    if (!canEdit) {
+      if (trainerOnly && isOwn(slot.teamId)) setRequestDraft(draftFromSlot(slot));
+      else toast(trainerOnly ? "Je kunt alleen wijzigingen aanvragen voor je eigen team" : "Je hebt alleen leesrechten");
+      return;
+    }
     if (slot.source === "match") {
       setEditMatch(data.matches.find((m) => m.id === slot.id) ?? null);
     } else {
@@ -69,6 +87,10 @@ export default function VeldbezettingPage() {
   };
 
   const commitMove = (slot: FieldSlot, p: Preview) => {
+    if (!canEdit) {
+      setRequestDraft(draftFromSlot(slot, p));
+      return;
+    }
     if (slot.source === "match") {
       update((d) => ({
         ...d,
@@ -95,7 +117,13 @@ export default function VeldbezettingPage() {
       <PageHeader
         eyebrow="Planning"
         title="Veldbezetting"
-        description="Sleep blokken om te verplaatsen, klik op een lege plek om te reserveren. Velden zijn opgedeeld in kwarten A–D."
+        description={
+          canEdit
+            ? "Sleep blokken om te verplaatsen, klik op een lege plek om te reserveren. Velden zijn opgedeeld in kwarten A–D."
+            : trainerOnly
+              ? "Klik op een training van je team of sleep het blok naar een andere plek om een wijziging aan te vragen. Klik op een lege plek voor een extra training."
+              : "Overzicht van alle velden. Velden zijn opgedeeld in kwarten A–D."
+        }
         actions={
           <>
             <DateNavigator value={date} onChange={setDate} />
@@ -132,18 +160,27 @@ export default function VeldbezettingPage() {
           })}
         </div>
         <div className="flex flex-wrap gap-2">
-          {unplanned.length > 0 && (
+          {trainerOnly && me.teamIds.length > 0 && (
+            <Button
+              variant="primary"
+              onClick={() => setRequestDraft({ teamId: me.teamIds[0], scope: "eenmalig", date, fieldId: data.fields[0]?.id ?? "", sections: [0, 1], start: 18 * 60, end: 19 * 60 + 30 })}
+              disabled={!data.fields.length}
+            >
+              <Plus size={16} /> Training aanvragen
+            </Button>
+          )}
+          {canEdit && unplanned.length > 0 && (
             <Button variant="primary" onClick={autoPlan}><Wand2 size={16} /> {unplanned.length} wedstrijd(en) automatisch indelen</Button>
           )}
-          <Button onClick={() => setClosureOpen(true)}><CloudRain size={16} /> Veld afkeuren</Button>
-          <Button
+          {canEdit && <Button onClick={() => setClosureOpen(true)}><CloudRain size={16} /> Veld afkeuren</Button>}
+          {canEdit && <Button
             variant="primary"
             disabled={!data.fields.length}
             title={data.fields.length ? undefined : "Voeg eerst een veld toe bij Instellingen"}
             onClick={() => setDraft({ kind: "training", fieldId: data.fields[0]?.id ?? "", sections: [0, 1], start: weekend ? 600 : 1080, end: weekend ? 660 : 1170, recurring: !weekend })}
           >
             <Plus size={16} /> Reservering
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -180,9 +217,13 @@ export default function VeldbezettingPage() {
           conflictKeys={conflictKeys}
           onOpen={openSlot}
           onMove={commitMove}
-          onCreate={(fieldId, lane, start) =>
-            setDraft({ kind: "training", fieldId, sections: sectionsForLane("half", lane), start, end: start + 90, recurring: !weekend })
-          }
+          onCreate={(fieldId, lane, start) => {
+            if (canEdit) setDraft({ kind: "training", fieldId, sections: sectionsForLane("half", lane), start, end: start + 90, recurring: !weekend });
+            else if (trainerOnly && me.teamIds.length)
+              setRequestDraft({ teamId: me.teamIds[0], scope: "eenmalig", date, fieldId, sections: sectionsForLane("half", lane), start, end: start + 90 });
+          }}
+          draggable={(s) => canEdit || (trainerOnly && isOwn(s.teamId))}
+          pending={pending}
           lookups={lookups}
         />
       ) : (
@@ -191,6 +232,7 @@ export default function VeldbezettingPage() {
 
       <BookingModal open={!!draft} draft={draft} date={date} onClose={() => setDraft(null)} />
       <MatchModal match={editMatch} onClose={() => setEditMatch(null)} />
+      <RequestModal draft={requestDraft} onClose={() => setRequestDraft(null)} />
       <ClosureModal open={closureOpen} onClose={() => setClosureOpen(false)} date={date} />
     </>
   );
@@ -207,6 +249,7 @@ function Legend() {
       ))}
       <span className="flex items-center gap-1.5"><Trophy size={13} /> Wedstrijd (gearceerd)</span>
       <span className="flex items-center gap-1.5"><Repeat size={13} /> Wekelijks</span>
+      <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm border-2 border-dashed border-amber-500" /> Aangevraagd</span>
     </div>
   );
 }
@@ -217,7 +260,7 @@ function slotColors(slot: FieldSlot, lookups: ReturnType<typeof useLookups>) {
   return CATEGORY_META[team.category];
 }
 
-function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, lookups }: {
+function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, lookups, draggable, pending }: {
   date: string;
   range: { from: number; to: number };
   slots: FieldSlot[];
@@ -226,6 +269,8 @@ function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, 
   onMove: (s: FieldSlot, p: Preview) => void;
   onCreate: (fieldId: string, lane: number, start: number) => void;
   lookups: ReturnType<typeof useLookups>;
+  draggable: (s: FieldSlot) => boolean;
+  pending: ChangeRequest[];
 }) {
   const { data } = useStore();
   const colRefs = useRef(new Map<string, HTMLDivElement>());
@@ -256,6 +301,7 @@ function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, 
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDrag({
       slot,
+      locked: !draggable(slot),
       grabMinute: loc.minute - slot.start,
       grabLaneOffset: loc.lane - Math.min(...slot.sections),
       startX: e.clientX,
@@ -266,7 +312,7 @@ function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, 
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag) return;
+    if (!drag || drag.locked) return;
     const moved = drag.moved || Math.abs(e.clientX - drag.startX) + Math.abs(e.clientY - drag.startY) > 5;
     const loc = locate(e.clientX, e.clientY);
     if (!loc) return setDrag({ ...drag, moved });
@@ -389,6 +435,23 @@ function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, 
                     />
                   );
                 })}
+
+                {pending.filter((r) => r.fieldId === f.id).map((r) => (
+                  <div
+                    key={r.id}
+                    className="pointer-events-none absolute z-[6] rounded-lg border-2 border-dashed border-amber-500 bg-amber-50/70 px-1.5 py-1 text-[11px] font-semibold text-amber-900"
+                    style={{
+                      top: (r.start - range.from) * PX + 1,
+                      height: (r.end - r.start) * PX - 2,
+                      left: `calc(${Math.min(...r.sections) * 25}% + 2px)`,
+                      width: `calc(${r.sections.length * 25}% - 4px)`,
+                    }}
+                    title="Aangevraagd, wacht op goedkeuring"
+                  >
+                    <span className="block truncate">⏳ {lookups.team.get(r.teamId)?.name}</span>
+                    {(r.end - r.start) * PX > 34 && <span className="block truncate font-normal">aangevraagd</span>}
+                  </div>
+                ))}
 
                 {drag?.moved && drag.preview.fieldId === f.id && (
                   <div

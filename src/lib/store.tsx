@@ -9,7 +9,16 @@ import type { AppData } from "./types";
 
 const STORAGE_KEY = "clubsupport:data:v1";
 
-export type DataSource = { kind: "demo" } | { kind: "cloud"; clubId: string; role: Role };
+export interface Me {
+  /** Supabase user id (cloud) or a fixed id (demo) */
+  id: string;
+  name: string;
+  role: Role;
+  /** Teams this user coaches (trainer role) */
+  teamIds: string[];
+}
+
+export type DataSource = { kind: "demo"; me: Me } | { kind: "cloud"; clubId: string; me: Me };
 export type SyncStatus = "saved" | "saving" | "error";
 
 type Updater = (draft: AppData) => AppData;
@@ -22,7 +31,13 @@ interface StoreValue {
   reset: () => void;
   replace: (data: AppData) => void;
   source: DataSource;
+  me: Me;
+  /** Admins and planners change the planning directly */
   canEdit: boolean;
+  /** Trainers (and planners) can submit change requests */
+  canRequest: boolean;
+  /** Change only the change requests (allowed for trainers) */
+  updateRequests: (fn: (requests: AppData["requests"]) => AppData["requests"]) => void;
   sync: SyncStatus;
   syncError: string | null;
 }
@@ -34,7 +49,8 @@ export function loadDemoData(): AppData | null {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppData;
-      if (parsed?.version === 1) return parsed;
+      // Older demo data predates change requests
+      if (parsed?.version === 1) return { ...parsed, requests: parsed.requests ?? [] };
     }
   } catch {
     /* storage unavailable or corrupt */
@@ -53,7 +69,9 @@ export function StoreProvider({ children, fallback, source }: { children: React.
 
   const cloud = source.kind === "cloud" ? source : null;
   const clubId = cloud?.clubId;
-  const canEdit = !cloud || cloud.role === "admin" || cloud.role === "planner";
+  const me = source.me;
+  const canEdit = me.role === "admin" || me.role === "planner";
+  const canRequest = canEdit || me.role === "trainer";
 
   /** Last state known to be stored remotely; changes beyond it are written by the save effect. */
   const savedRef = useRef<AppData | null>(null);
@@ -156,6 +174,14 @@ export function StoreProvider({ children, fallback, source }: { children: React.
     [canEdit],
   );
 
+  const updateRequests = useCallback(
+    (fn: (requests: AppData["requests"]) => AppData["requests"]) => {
+      if (!canRequest) return;
+      setState((s) => (s.data ? { data: { ...s.data, requests: fn(s.data.requests) }, history: [...s.history.slice(-29), s.data] } : s));
+    },
+    [canRequest],
+  );
+
   const undo = useCallback(() => {
     setState((s) => (s.history.length ? { data: s.history[s.history.length - 1], history: s.history.slice(0, -1) } : s));
   }, []);
@@ -174,8 +200,8 @@ export function StoreProvider({ children, fallback, source }: { children: React.
 
   const canUndo = history.length > 0;
   const value = useMemo(
-    () => (data ? { data, update, undo, canUndo, reset, replace, source, canEdit, sync, syncError } : null),
-    [data, update, undo, canUndo, reset, replace, source, canEdit, sync, syncError],
+    () => (data ? { data, update, updateRequests, undo, canUndo, reset, replace, source, me, canEdit, canRequest, sync, syncError } : null),
+    [data, update, updateRequests, undo, canUndo, reset, replace, source, me, canEdit, canRequest, sync, syncError],
   );
 
   if (loadError) {

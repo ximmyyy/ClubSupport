@@ -10,7 +10,8 @@
 | **Veldbezetting** | Tijdlijn per dag met elk veld opgedeeld in kwarten A–D. Blokken verslepen naar een ander veld, deel of tijdstip (met live check op "bezet"), klikken op een lege plek om te reserveren, wekelijkse trainingen met uitzonderingen ("alleen deze week laten vervallen"). Conflicten worden rood gemarkeerd. De **Veldkaart** toont bovenaanzichten van de velden met een tijdschuif en afspeelknop. |
 | **Veld afkeuren** | Veld afkeuren voor een dag; de thuiswedstrijden op dat veld worden direct afgelast en hun kleedkamers vrijgegeven. |
 | **Kleedkamers** | Gantt per kleedkamer. Automatisch indelen (thuis, uit en scheidsrechter) met tijd vóór en na de wedstrijd en schoonmaaktijd tussen wissels. Slepen naar een andere kleedkamer, lijst "nog in te delen", overzicht **Wie zit waar?**, **deurbordjes printen** en **kopiëren voor WhatsApp**. |
-| **Wedstrijden** | Programma en uitslagen per wedstrijddag, afgelasten met één klik, **programma importeren** (plakken uit Sportlink of Excel) en de **wedstrijddag-assistent**: aftraptijden plannen (jongste teams eerst, velden zo vol mogelijk, nooit meer teams dan kleedkamers), velden en kleedkamers indelen en vrijwilligersdiensten aanmaken, allemaal in één keer. |
+| **Wedstrijden** | Programma en uitslagen per wedstrijddag, afgelasten met bevestiging (veld en kleedkamers komen vrij), **programma importeren** (plakken uit Sportlink of Excel) en de **wedstrijddag-assistent**: aftraptijden plannen (jongste teams eerst, velden zo vol mogelijk, nooit meer teams dan kleedkamers), velden en kleedkamers indelen en vrijwilligersdiensten aanmaken, allemaal in één keer. |
+| **Verzoeken** | Trainers vragen een ander veld, een andere tijd of een extra training aan: door op hun eigen training te klikken, het blok te verslepen of op een lege plek te klikken. De wedstrijdsecretaris ziet direct of het verzoek botst met de planning en keurt goed of af; bij goedkeuren wordt de planning aangepast (alleen die week of de hele reeks). Openstaande verzoeken staan gestippeld in de veldplanner. |
 | **Teams** | Teamkaarten met trainer, aantal spelers, veldbehoefte (kwart, half of heel veld), wedstrijdduur en trainingstijden. Typ je een KNVB-teamnaam (bijv. `JO11-2`), dan worden categorie, veldgrootte en speelduur automatisch voorgesteld. |
 | **Vrijwilligers** | Bardiensten, wedstrijdsecretariaat, veld opbouwen en scheidsrechters, automatisch aangemaakt per wedstrijddag en eerlijk verdeeld over teams. Een team fluit nooit een even oud of ouder team en krijgt geen dienst als het zelf speelt. Inclusief een overzicht van het aantal diensten per team. |
 | **TV-scherm** (`/scherm`) | Groot scherm voor de kantine: programma van vandaag met velden en kleedkamers, live veldkaarten en een melding als een veld is afgekeurd. |
@@ -20,23 +21,24 @@ Overal: **ongedaan maken** via de melding na elke actie, en een mobielvriendelij
 
 ## Twee manieren om de app te gebruiken
 
-**Met je club (Supabase).** Inloggen gaat met een inloglink per e-mail, zonder wachtwoord. Na de eerste keer inloggen maak je een club aan (leeg, met voorbeelddata of met je demo-gegevens) en word je beheerder. Via *Instellingen → Leden & rechten* nodig je anderen uit als **beheerder**, **planner** of **alleen lezen**. Ze worden automatisch lid zodra ze inloggen met dat e-mailadres. Wijzigingen worden direct opgeslagen; andere geopende schermen (zoals het TV-scherm) werken realtime bij.
+**Met je club (Supabase).** Inloggen gaat met een inloglink per e-mail, zonder wachtwoord. Na de eerste keer inloggen maak je een club aan (leeg, met voorbeelddata of met je demo-gegevens) en word je beheerder. Via *Instellingen → Leden & rechten* nodig je anderen uit als **beheerder**, **planner**, **trainer** (gekoppeld aan één of meer teams) of **alleen lezen**. Ze worden automatisch lid zodra ze inloggen met dat e-mailadres. Wijzigingen worden direct opgeslagen; andere geopende schermen (zoals het TV-scherm) werken realtime bij.
 
-**Demo.** Via */demo* of de knop op het inlogscherm, zonder account. Je krijgt een fictieve club (*VV De Zwaluwen*: 21 teams, 4 velden, 10 kleedkamers) met een volledig ingepland seizoen. Er zit bewust één dubbele boeking in (keeperstraining op woensdag) om de conflictdetectie te laten zien. Alles blijft in de `localStorage` van je browser.
+**Demo.** Via */demo* of de knop op het inlogscherm, zonder account. Linksonder kies je *Bekijk de demo als*: wedstrijdsecretaris, trainer van een team of alleen lezen. Je krijgt een fictieve club (*VV De Zwaluwen*: 21 teams, 4 velden, 10 kleedkamers) met een volledig ingepland seizoen. Er zit bewust één dubbele boeking in (keeperstraining op woensdag) om de conflictdetectie te laten zien. Alles blijft in de `localStorage` van je browser.
 
 ## Backend: Supabase
 
 - Project **clubsupport**, regio `eu-central-1` (Frankfurt). Gegevens van leden en jeugdspelers blijven in de EU.
 - **Multi-tenant:** alle clubs in één database; elke tabel heeft een `club_id`. Row level security bepaalt op basis van de tabel `memberships` wie wat mag:
 
-  | Rol | Lezen | Planning en instellingen wijzigen | Leden beheren |
-  | --- | :-: | :-: | :-: |
-  | Beheerder | ✅ | ✅ | ✅ |
-  | Planner | ✅ | ✅ | – |
-  | Alleen lezen | ✅ | – | – |
+  | Rol | Lezen | Verzoeken indienen | Planning en instellingen wijzigen, verzoeken beoordelen | Leden beheren |
+  | --- | :-: | :-: | :-: | :-: |
+  | Beheerder | ✅ | ✅ | ✅ | ✅ |
+  | Planner | ✅ | ✅ | ✅ | – |
+  | Trainer | ✅ | eigen teams | – | – |
+  | Alleen lezen | ✅ | – | – | – |
 
   Verwijzingen tussen tabellen zijn samengestelde foreign keys op `(club_id, id)`, zodat een rij nooit naar data van een andere club kan wijzen. De laatste beheerder van een club kan niet worden verwijderd.
-- **Schema:** `supabase/migrations/`. De isolatietest staat in `supabase/tests/rls_isolation.sql` (draait volledig in een transactie die wordt teruggedraaid).
+- **Schema:** `supabase/migrations/`. Tests voor de beveiligingsregels staan in `supabase/tests/` (isolatie tussen clubs en de trainerrol); ze draaien volledig in een transactie die wordt teruggedraaid.
 - **App-koppeling:** `src/lib/cloud.ts` (laden, opslaan, leden) en `src/lib/repository.ts` (vertaling tussen app-model en tabellen, en het omzetten van een wijziging naar de minimale set inserts, updates en deletes). Pagina's praten nooit rechtstreeks met Supabase.
 - **Configuratie:** `.env.example` bevat de project-URL en de *publishable key*. Die key is bedoeld voor de browser; de beveiliging zit in RLS. Zonder deze variabelen draait de app alleen in demomodus.
 
@@ -94,11 +96,10 @@ Alle planningslogica staat los van de UI in `src/lib/planning.ts`. Die kan dus o
 ## Volgende stappen (voorstel)
 
 1. **Livegang:** eigen domein koppelen in Vercel en de redirect-URL's en SMTP in Supabase instellen (zie hierboven).
-2. **Meer rollen:** trainer (eigen team, trainingen ruilen), vrijwilliger (diensten inschrijven), ouder/speler (alleen lezen). Plus een TV-scherm dat met een geheime link werkt in plaats van een ingelogd account.
+2. **Meer rollen:** vrijwilliger (diensten inschrijven) en ouder/speler (alleen eigen team). Plus een TV-scherm dat met een geheime link werkt in plaats van een ingelogd account, en meldingen voor trainers wanneer hun verzoek is beoordeeld.
 3. **Schaal:** nu wordt bij openen de hele club geladen. Bij meerdere seizoenen alleen een datumvenster laden.
 4. **Sportlink-koppeling (geparkeerd, wacht op een client-ID van een club):** het programma, uitslagen en afgelastingen automatisch ophalen via de Sportlink Club.Dataservice (`data.sportlink.com`, één client-ID per club, alleen lezen). Plan: de sleutel opslaan per club (alleen zichtbaar voor beheerders), Sportlink-teams eenmalig koppelen aan eigen teams, en server-side synchroniseren op basis van de Sportlink-wedstrijdcode. Eigen planning (veld, kleedkamers, diensten) wordt nooit overschreven; wijzigingen door de KNVB worden als aandachtspunt getoond. Tot die tijd: handmatig importeren door te plakken.
 5. **Notificaties:** push en e-mail bij afgelastingen, gewijzigde kleedkamers of een open dienst.
-6. **Ruilverzoeken:** trainers vragen een ander veld of tijdstip aan en de wedstrijdsecretaris keurt goed.
-7. **Kantine en sponsoren:** sponsorlogo's tussendoor op het TV-scherm, uitslagen live bijwerken.
-8. **Meer sporten:** sportprofielen (veldindeling, wedstrijdduur, categorieën) voor hockey, korfbal en handbal.
-9. **Abonnementen:** prijsmodel per club (bijv. naar aantal teams), proefperiode en facturatie.
+6. **Kantine en sponsoren:** sponsorlogo's tussendoor op het TV-scherm, uitslagen live bijwerken.
+7. **Meer sporten:** sportprofielen (veldindeling, wedstrijdduur, categorieën) voor hockey, korfbal en handbal.
+8. **Abonnementen:** prijsmodel per club (bijv. naar aantal teams), proefperiode en facturatie.
