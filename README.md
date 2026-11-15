@@ -96,7 +96,7 @@ Alle planningslogica staat los van de UI in `src/lib/planning.ts`. Die kan dus o
 1. **Livegang:** eigen domein koppelen in Vercel en de redirect-URL's en SMTP in Supabase instellen (zie hierboven).
 2. **Meer rollen:** trainer (eigen team, trainingen ruilen), vrijwilliger (diensten inschrijven), ouder/speler (alleen lezen). Plus een TV-scherm dat met een geheime link werkt in plaats van een ingelogd account.
 3. **Schaal:** nu wordt bij openen de hele club geladen. Bij meerdere seizoenen alleen een datumvenster laden.
-4. **Sportlink-koppeling:** het wedstrijdprogramma automatisch ophalen in plaats van plakken.
+4. **Sportlink-koppeling (geparkeerd, wacht op een client-ID van een club):** het programma, uitslagen en afgelastingen automatisch ophalen via de Sportlink Club.Dataservice (`data.sportlink.com`, één client-ID per club, alleen lezen). Plan: de sleutel opslaan per club (alleen zichtbaar voor beheerders), Sportlink-teams eenmalig koppelen aan eigen teams, en server-side synchroniseren op basis van de Sportlink-wedstrijdcode. Eigen planning (veld, kleedkamers, diensten) wordt nooit overschreven; wijzigingen door de KNVB worden als aandachtspunt getoond. Tot die tijd: handmatig importeren door te plakken.
 5. **Notificaties:** push en e-mail bij afgelastingen, gewijzigde kleedkamers of een open dienst.
 6. **Ruilverzoeken:** trainers vragen een ander veld of tijdstip aan en de wedstrijdsecretaris keurt goed.
 7. **Kantine en sponsoren:** sponsorlogo's tussendoor op het TV-scherm, uitslagen live bijwerken.
