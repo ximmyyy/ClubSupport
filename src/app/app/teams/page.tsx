@@ -30,7 +30,7 @@ export default function TeamsPage() {
         title="Teams"
         description={
           data.teams.length
-            ? `${data.teams.length} teams met samen ${data.teams.reduce((n, t) => n + t.players, 0)} spelers.${canEdit ? " Tik op een team om het te wijzigen." : ""}`
+            ? `${data.teams.length} teams met samen ${data.teams.reduce((n, t) => n + t.players, 0)} spelers.${canEdit ? " Kies een team om het te wijzigen." : ""}`
             : "Alle teams van je club op een rij."
         }
         actions={canEdit && <Button variant="primary" onClick={newTeam}><Plus size={18} /> Team toevoegen</Button>}
@@ -78,8 +78,8 @@ export default function TeamsPage() {
                 <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
                   <div className="flex items-center gap-1.5 text-stone-600"><User size={14} className="text-stone-500" /> {t.trainer}</div>
                   <div className="flex items-center gap-1.5 text-stone-600"><Users size={14} className="text-stone-500" /> {t.players} spelers</div>
-                  <div className="flex items-center gap-1.5 text-stone-600"><Clock size={14} className="text-stone-500" /> {t.matchDuration} min</div>
-                  <div className="flex items-center gap-1.5 text-stone-600"><DoorOpen size={14} className="text-stone-500" /> {t.roomForTraining ? "KK bij training" : "Geen KK training"}</div>
+                  <div className="flex items-center gap-1.5 text-stone-600"><Clock size={14} className="text-stone-500" /> Wedstrijd {t.matchDuration} min</div>
+                  <div className="flex items-center gap-1.5 text-stone-600"><DoorOpen size={14} className="text-stone-500" /> {t.roomForTraining ? "Kleedkamer bij training" : "Geen kleedkamer"}</div>
                 </dl>
                 <div className="mt-4 border-t border-stone-100 pt-3">
                   <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold tracking-wide text-stone-500 uppercase"><Repeat size={12} /> Trainingen</p>

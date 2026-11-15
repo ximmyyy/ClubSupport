@@ -18,6 +18,7 @@ import {
 } from "@/lib/planning";
 import { uid } from "@/lib/seed";
 import { useLookups, useStore } from "@/lib/store";
+import { plural } from "@/lib/text";
 import { addDays, fmtTime, nowMinutes, startOfWeek, todayISO, WEEKDAYS, WEEKDAYS_SHORT, weekdayOf } from "@/lib/time";
 import type { ChangeRequest, Match } from "@/lib/types";
 
@@ -111,7 +112,7 @@ export default function VeldbezettingPage() {
   const autoPlan = () => {
     const { updates, failed } = autoPlanMatchFields(data, date);
     update((d) => ({ ...d, matches: d.matches.map((m) => (updates.has(m.id) ? { ...m, ...updates.get(m.id) } : m)) }));
-    toast(failed.length ? `${updates.size} ingedeeld, ${failed.length} passen niet` : `${updates.size} wedstrijd(en) ingedeeld`, { undo: true });
+    toast(failed.length ? `${updates.size} ingedeeld, ${failed.length} passen niet` : `${plural(updates.size, "wedstrijd", "wedstrijden")} ingedeeld`, { undo: true });
   };
 
   const weekStart = startOfWeek(date);
@@ -179,7 +180,7 @@ export default function VeldbezettingPage() {
             </Button>
           )}
           {canEdit && unplanned.length > 0 && (
-            <Button variant="primary" onClick={autoPlan}><Wand2 size={16} /> {unplanned.length} wedstrijd(en) automatisch indelen</Button>
+            <Button variant="primary" onClick={autoPlan}><Wand2 size={16} /> {plural(unplanned.length, "wedstrijd", "wedstrijden")} automatisch indelen</Button>
           )}
           {canEdit && <Button onClick={() => setClosureOpen(true)}><CloudRain size={16} /> Veld afkeuren</Button>}
           {canEdit && view !== "lijst" && <Button
@@ -476,7 +477,7 @@ function Timeline({ date, range, slots, conflictKeys, onOpen, onMove, onCreate, 
       <div className="scrollbar-thin overflow-x-auto">
         <div
           className="grid min-w-max select-none"
-          style={{ gridTemplateColumns: `56px repeat(${data.fields.length}, minmax(240px, 1fr))` }}
+          style={{ gridTemplateColumns: `56px repeat(${data.fields.length}, minmax(198px, 1fr))` }}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={() => setDrag(null)}
@@ -631,7 +632,7 @@ function SlotBlock({ slot, top, conflict, faded, colors, onPointerDown }: {
         "absolute z-[5] cursor-pointer touch-manipulation overflow-hidden rounded-lg border-l-4 py-1 text-xs shadow-sm transition-[opacity,box-shadow] hover:shadow-md",
         conflict && "conflict-ring",
         faded && "opacity-30",
-        slot.sections.length > 1 ? "px-2" : "px-1.5",
+        slot.sections.length > 1 ? "px-2" : "px-1 text-[11px]",
       )}
       style={{
         top: top + 1,
@@ -714,7 +715,7 @@ function PitchMap({ date, range, slots }: { date: string; range: { from: number;
         </div>
         <div className="text-right">
           <p className="text-3xl font-bold tabular-nums text-stone-900">{fmtTime(time)}</p>
-          <p className="text-xs text-stone-600">{active.length} activiteit(en) op het park</p>
+          <p className="text-xs text-stone-600">{plural(active.length, "activiteit", "activiteiten")} op het park</p>
         </div>
       </Card>
       <div className="grid gap-4 md:grid-cols-2">
@@ -771,7 +772,7 @@ function ClosureModal({ open, onClose, date }: { open: boolean; onClose: () => v
       matches: cancelMatches ? d.matches.map((m) => (affected.some((a) => a.id === m.id) ? { ...m, status: "afgelast" as const } : m)) : d.matches,
       roomAssignments: cancelMatches ? d.roomAssignments.filter((a) => !affected.some((m) => m.id === a.matchId)) : d.roomAssignments,
     }));
-    toast(`Veld afgekeurd${cancelMatches && affected.length ? `, ${affected.length} wedstrijd(en) afgelast` : ""}`, { undo: true });
+    toast(`Veld afgekeurd${cancelMatches && affected.length ? `, ${plural(affected.length, "wedstrijd", "wedstrijden")} afgelast` : ""}`, { undo: true });
     onClose();
   };
 

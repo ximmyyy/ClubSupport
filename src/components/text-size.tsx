@@ -33,7 +33,7 @@ export function ApplyTextSize() {
 }
 
 /** Three-step text size switch ("A A A") for people who want larger text. */
-export function TextSizeControl({ dark }: { dark?: boolean }) {
+export function TextSizeControl({ dark, inline }: { dark?: boolean; inline?: boolean }) {
   const [size, setSize] = useState<SizeId>(read);
   const choose = (id: SizeId) => {
     setSize(id);
@@ -45,8 +45,8 @@ export function TextSizeControl({ dark }: { dark?: boolean }) {
     }
   };
   return (
-    <div>
-      <p className={cn("mb-1.5 text-sm font-semibold", dark ? "text-brand-100" : "text-stone-800")}>Tekstgrootte</p>
+    <div className={cn(inline && "flex items-center justify-between gap-3")}>
+      <p className={cn("text-sm font-semibold", !inline && "mb-1.5", dark ? "text-brand-100" : "text-stone-800")}>Tekstgrootte</p>
       <div className={cn("inline-flex rounded-xl p-1", dark ? "bg-white/10" : "bg-stone-200/70")} role="radiogroup" aria-label="Tekstgrootte">
         {SIZES.map((s) => (
           <button
@@ -58,7 +58,8 @@ export function TextSizeControl({ dark }: { dark?: boolean }) {
             title={s.label}
             onClick={() => choose(s.id)}
             className={cn(
-              "flex h-11 w-12 items-center justify-center rounded-lg font-bold transition-colors sm:h-9",
+              "flex h-11 items-center justify-center rounded-lg font-bold transition-colors",
+              inline ? "w-11 lg:h-8 lg:w-9" : "w-12 sm:h-9",
               s.sample,
               size === s.id ? (dark ? "bg-white text-brand-950" : "bg-white text-stone-900 shadow-sm") : dark ? "text-brand-100/80 hover:text-white" : "text-stone-600 hover:text-stone-900",
             )}

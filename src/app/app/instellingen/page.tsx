@@ -84,7 +84,7 @@ export default function InstellingenPage() {
     <>
       <PageHeader eyebrow="Club" title="Instellingen" description="Hier leg je vast hoe je club eruitziet: de velden, de kleedkamers en wie er mag meewerken." />
       {!canEdit && <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-amber-900">Je kunt de instellingen bekijken. Alleen beheerders en planners kunnen ze wijzigen.</p>}
-      <fieldset disabled={!canEdit} className="grid min-w-0 gap-4 xl:grid-cols-2">
+      <fieldset disabled={!canEdit} className="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader title="Club" subtitle="Naam en plaats van de vereniging" />
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
@@ -153,9 +153,9 @@ export default function InstellingenPage() {
           </div>
         </Card>
 
-        <Card className="xl:col-span-2">
+        <Card>
           <CardHeader title="Regels voor het automatisch indelen" subtitle="De standaardwaarden werken voor de meeste clubs. Pas ze alleen aan als het bij jullie anders gaat." />
-          <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
+          <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
             <FormField label="Kleedkamer open vóór de aftrap" hint="In minuten">
               <CommitInput type="number" inputMode="numeric" min={0} step={5} value={data.club.roomBefore} onCommit={(v) => setClub("roomBefore", num(v))} />
             </FormField>

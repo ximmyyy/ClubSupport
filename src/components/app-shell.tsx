@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { ROLE_LABELS, type Role } from "@/lib/cloud";
 import { useStore } from "@/lib/store";
 import { todayISO } from "@/lib/time";
@@ -100,8 +100,8 @@ function AccountFooter() {
   const { state, signOut, leaveDemo, cloudAvailable, setDemoRole } = useAccount();
   const { data } = useStore();
   return (
-    <div className="mt-auto flex flex-col gap-4 pt-4">
-      <div className="px-2"><TextSizeControl dark /></div>
+    <div className="mt-auto flex flex-col gap-3 pt-2">
+      <div className="px-2"><TextSizeControl dark inline /></div>
       {state.status === "demo" && (
         <div className="rounded-xl bg-white/8 p-3 text-sm text-brand-100/80">
           <label className="mb-2 block">
@@ -121,7 +121,7 @@ function AccountFooter() {
               <option value="viewer">Alleen lezen</option>
             </select>
           </label>
-          <p>Dit is de demo. Wijzigingen blijven alleen in deze browser bewaard.</p>
+          <p className="text-xs">Dit is de demo: wijzigingen blijven alleen in deze browser.</p>
           {cloudAvailable && (
             <button onClick={leaveDemo} className="mt-2 flex min-h-11 items-center gap-2 font-semibold text-brand-200 hover:text-white sm:min-h-0">
               <LogIn size={16} /> Inloggen met je club
@@ -168,14 +168,14 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
     <nav className="flex flex-col gap-0.5" aria-label="Hoofdmenu">
       <NavLink item={HOME} onNavigate={onNavigate} />
       {NAV_GROUPS.map((group) => (
-        <div key={group.title} className="mt-4 flex flex-col gap-0.5">
+        <div key={group.title} className="mt-3 flex flex-col gap-0.5">
           <p className="px-3 pb-1 text-xs font-semibold tracking-wider text-brand-100/60 uppercase">{group.title}</p>
           {group.items.map((item) => (
             <NavLink key={item.href} item={item} onNavigate={onNavigate} badge={item.href === "/app/verzoeken" ? openRequests : undefined} />
           ))}
         </div>
       ))}
-      <div className="my-3 h-px bg-white/10" />
+      <div className="my-2 h-px bg-white/10" />
       <Link
         href="/scherm"
         target="_blank"
@@ -193,6 +193,12 @@ function Frame({ children }: { children: React.ReactNode }) {
   const openRequests = useOpenRequestCount();
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
   const initials = data.club.shortName.slice(0, 2).toUpperCase();
   const tabs = (canEdit ? TABS_PLANNER : TABS_OTHER).map((href) => ALL_NAV.find((n) => n.href === href)!);
   const moreActive = !tabs.some((t) => isActive(pathname, t.href));
@@ -226,7 +232,7 @@ function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh">
       {/* Desktop sidebar */}
-      <aside className="no-print scrollbar-thin sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-5 overflow-y-auto bg-brand-950 p-4 lg:flex">
+      <aside className="no-print scrollbar-thin sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-4 overflow-y-auto bg-brand-950 p-4 lg:flex">
         <Link href="/" className="px-2 pt-1">
           <Logo light />
         </Link>

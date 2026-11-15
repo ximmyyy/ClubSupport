@@ -155,9 +155,29 @@ export function Modal({ open, onClose, title, children, footer, wide, cancelLabe
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
+    const onKey = (e: KeyboardEvent) => {
+      // Only the top-most dialog reacts (a confirmation can sit on top of a form)
+      const all = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      if (all[all.length - 1] !== dialog.current) return;
+      if (e.key === "Escape") return closeRef.current();
+      if (e.key !== "Tab" || !dialog.current) return;
+      // Keep keyboard focus inside the dialog
+      const items = [...dialog.current.querySelectorAll<HTMLElement>("button, input, select, textarea, a[href], summary")].filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !dialog.current.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !dialog.current.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
     lockScroll();
+    const previous = document.activeElement as HTMLElement | null;
 
     // On touch screens, do not pop up the keyboard right away: focus the dialog itself.
     const touch = window.matchMedia("(pointer: coarse)").matches;
@@ -180,6 +200,8 @@ export function Modal({ open, onClose, title, children, footer, wide, cancelLabe
       vv?.removeEventListener("resize", fit);
       vv?.removeEventListener("scroll", fit);
       unlockScroll();
+      // Give focus back to the button that opened the dialog
+      previous?.focus?.({ preventScroll: true });
     };
   }, [open]);
 

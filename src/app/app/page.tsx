@@ -13,6 +13,7 @@ import { Card, CardHeader, cn, StatTile } from "@/components/ui";
 import { CATEGORY_META } from "@/lib/meta";
 import { demandKey, fieldOccupancy, fieldSlotsForDate, findFieldConflicts, isFieldClosed, roomDemandsForDate } from "@/lib/planning";
 import { useLookups, useStore } from "@/lib/store";
+import { plural } from "@/lib/text";
 import { addDays, cap, fmtTime, formatDate, nowMinutes, startOfWeek, todayISO, WEEKDAYS_SHORT } from "@/lib/time";
 
 type Alert = { date: string; href: string; icon: React.ReactNode; text: string; tone: "red" | "amber" };
@@ -43,19 +44,19 @@ export default function DashboardPage() {
     const list: Alert[] = [];
     const open = data.requests.filter((r) => r.status === "open" && (canEdit || me.teamIds.includes(r.teamId)));
     if (open.length) {
-      list.push({ date: today, href: "/app/verzoeken", icon: <Inbox size={16} />, text: canEdit ? `${open.length} verzoek(en) van trainers wachten op goedkeuring` : `${open.length} van jouw verzoek(en) wacht(en) op goedkeuring`, tone: "amber" });
+      list.push({ date: today, href: "/app/verzoeken", icon: <Inbox size={16} />, text: canEdit ? `${plural(open.length, "verzoek van een trainer wacht", "verzoeken van trainers wachten")} op goedkeuring` : `${plural(open.length, "verzoek van jou wacht", "verzoeken van jou wachten")} op goedkeuring`, tone: "amber" });
     }
     for (let i = 0; i < 14; i++) {
       const date = addDays(today, i);
       const slots = fieldSlotsForDate(data, date);
       for (const c of findFieldConflicts(slots, data, date)) list.push({ date, href: "/app/veldbezetting", icon: <AlertTriangle size={16} />, text: c.message, tone: "red" });
       const unplanned = data.matches.filter((m) => m.date === date && m.home && m.status === "gepland" && !m.fieldId);
-      if (unplanned.length) list.push({ date, href: "/app/wedstrijden", icon: <MapPin size={16} />, text: `${unplanned.length} thuiswedstrijd(en) zonder veld`, tone: "amber" });
+      if (unplanned.length) list.push({ date, href: "/app/wedstrijden", icon: <MapPin size={16} />, text: `${plural(unplanned.length, "thuiswedstrijd", "thuiswedstrijden")} zonder veld`, tone: "amber" });
       const covered = new Set(data.roomAssignments.filter((a) => a.date === date).map(demandKey));
       const noRoom = roomDemandsForDate(data, date).filter((d) => d.matchId && !covered.has(d.key));
-      if (noRoom.length) list.push({ date, href: "/app/kleedkamers", icon: <DoorOpen size={16} />, text: `${noRoom.length} team(s) zonder kleedkamer`, tone: "amber" });
+      if (noRoom.length) list.push({ date, href: "/app/kleedkamers", icon: <DoorOpen size={16} />, text: `${plural(noRoom.length, "team", "teams")} zonder kleedkamer`, tone: "amber" });
       const openDuties = data.duties.filter((d) => d.date === date && !d.person && !d.teamId);
-      if (openDuties.length) list.push({ date, href: "/app/vrijwilligers", icon: <HandHeart size={16} />, text: `${openDuties.length} open vrijwilligersdienst(en)`, tone: "amber" });
+      if (openDuties.length) list.push({ date, href: "/app/vrijwilligers", icon: <HandHeart size={16} />, text: `${plural(openDuties.length, "open vrijwilligersdienst", "open vrijwilligersdiensten")}`, tone: "amber" });
       for (const c of data.closures.filter((x) => x.date === date)) {
         list.push({ date, href: "/app/veldbezetting", icon: <CloudRain size={16} />, text: `${lookups.field.get(c.fieldId)?.name} afgekeurd: ${c.reason}`, tone: "amber" });
       }
@@ -76,12 +77,21 @@ export default function DashboardPage() {
   const openDuties = data.duties.filter((d) => d.date >= today && d.date <= addDays(today, 7) && !d.person && !d.teamId).length;
   const conflictCount = alerts.filter((a) => a.tone === "red").length;
 
-  // Moment shown on the pitch map: now, or the next activity today
-  const active = todaySlots.filter((s) => s.start <= now && now < s.end);
-  const nextSlot = todaySlots.find((s) => s.start > now);
-  const showAt = active.length ? now : nextSlot?.start ?? null;
-  const shown = showAt == null ? [] : todaySlots.filter((s) => s.start <= showAt && showAt < s.end);
-  const freeFields = data.fields.filter((f) => !shown.some((s) => s.fieldId === f.id) && !isFieldClosed(data.closures, f.id, today));
+  // Moment shown on the pitch map: now, the next activity today, or the first activity in the coming week
+  const park = (() => {
+    if (todaySlots.some((s) => s.start <= now && now < s.end)) return { date: today, at: now, slots: todaySlots, label: `Nu, ${fmtTime(now)}` };
+    const later = todaySlots.find((s) => s.start > now);
+    if (later) return { date: today, at: later.start, slots: todaySlots, label: `Eerstvolgende activiteit: vandaag om ${fmtTime(later.start)}` };
+    for (let i = 1; i <= 7; i++) {
+      const date = addDays(today, i);
+      const slots = fieldSlotsForDate(data, date);
+      if (slots.length) return { date, at: slots[0].start, slots, label: `Eerstvolgende activiteit: ${formatDate(date, { long: true })} om ${fmtTime(slots[0].start)}` };
+    }
+    return null;
+  })();
+  const parkDate = park?.date ?? today;
+  const shown = park ? park.slots.filter((s) => s.start <= park.at && park.at < s.end) : [];
+  const freeFields = data.fields.filter((f) => !shown.some((s) => s.fieldId === f.id) && !isFieldClosed(data.closures, f.id, parkDate));
 
   // A brand-new club only sees the step-by-step guide, not a wall of empty cards
   const emptyClub = !data.fields.length && !data.teams.length && !data.matches.length;
@@ -119,26 +129,26 @@ export default function DashboardPage() {
         <Card className="order-2 xl:order-none xl:col-span-2">
           <CardHeader
             title="Op het park"
-            subtitle={showAt == null ? "Vandaag geen activiteiten meer" : active.length ? `Nu, ${fmtTime(now)}` : `Eerstvolgende activiteit om ${fmtTime(showAt)}`}
+            subtitle={park ? park.label : "De komende week staat er niets gepland"}
             icon={<MapPin size={18} />}
-            action={<button onClick={() => go(today, "/app/veldbezetting")} className="min-h-11 shrink-0 rounded-lg px-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:min-h-0">Bekijk planning</button>}
+            action={<button onClick={() => go(parkDate, "/app/veldbezetting")} className="min-h-11 shrink-0 rounded-lg px-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:min-h-0">Bekijk planning</button>}
           />
           {data.fields.length === 0 && <p className="px-5 py-6 text-stone-600">Zodra je velden hebt toegevoegd, zie je hier wie er op het park staat.</p>}
           {freeFields.length > 0 && freeFields.length < data.fields.length && (
             <p className="px-4 pt-4 text-sm text-stone-600 sm:hidden">Vrij: {freeFields.map((f) => f.name).join(", ")}</p>
           )}
-          {freeFields.length === data.fields.length && data.fields.length > 0 && <p className="px-4 py-5 text-stone-600 sm:hidden">Alle velden zijn op dit moment vrij.</p>}
+          {freeFields.length === data.fields.length && data.fields.length > 0 && <p className="px-4 py-5 text-stone-600 sm:hidden">Alle velden zijn vrij.</p>}
           <div className="grid gap-3 p-4 sm:grid-cols-2">
             {data.fields.map((f) => {
               const occ = shown.filter((s) => s.fieldId === f.id);
-              const closedNow = isFieldClosed(data.closures, f.id, today);
+              const closedNow = isFieldClosed(data.closures, f.id, parkDate);
               return (
                 // On phones only fields that are in use (or closed) get a picture; free fields are listed above
                 <div key={f.id} className={cn(!occ.length && !closedNow && "hidden sm:block")}>
                   <p className="mb-1 flex justify-between text-sm"><span className="font-medium">{f.name}</span><span className="text-stone-500">{f.surface}</span></p>
                   <Pitch
                     className="w-full"
-                    closed={isFieldClosed(data.closures, f.id, today)?.reason}
+                    closed={closedNow?.reason}
                     occupants={occ.map((s) => {
                       const team = s.teamId ? lookups.team.get(s.teamId) : undefined;
                       return { key: s.key, sections: s.sections, title: s.title, subtitle: `${fmtTime(s.start)}–${fmtTime(s.end)}`, color: team ? CATEGORY_META[team.category].color : "#78716c", match: s.kind === "wedstrijd" };
@@ -177,7 +187,7 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="order-4 xl:order-none">
-          <CardHeader title="Komende wedstrijden" icon={<CalendarDays size={18} />} action={<Link href="/app/wedstrijden" className="flex min-h-11 shrink-0 items-center rounded-lg px-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:min-h-0">Alle wedstrijden</Link>} />
+          <CardHeader title="Komende wedstrijden" icon={<CalendarDays size={18} />} action={<Link href="/app/wedstrijden" className="flex min-h-11 shrink-0 items-center rounded-lg px-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:min-h-0">Bekijk alle</Link>} />
           <ul className="divide-y divide-stone-100">
             {upcoming.length === 0 && <li className="px-5 py-6 text-stone-600">Er staan nog geen wedstrijden gepland.</li>}
             {upcoming.map((m) => {
@@ -231,11 +241,11 @@ function WeekChart({ week, today, onPick }: { week: { date: string; occ: number;
   const [hover, setHover] = useState<number | null>(null);
   const H = 160;
   return (
-    <div className="px-5 pt-4 pb-5">
+    <div className="pt-4 pr-5 pb-5 pl-14">
       <div className="relative flex h-[190px] items-end gap-2 border-b border-stone-200" style={{ height: H + 30 }}>
         {[0.25, 0.5, 0.75, 1].map((g) => (
           <div key={g} className="pointer-events-none absolute inset-x-0 border-t border-dashed border-stone-100" style={{ bottom: g * H }}>
-            <span className="absolute -top-2 right-full mr-1 text-[10px] text-stone-500 tabular-nums">{g * 100}</span>
+            <span className="absolute -top-2 right-full mr-1.5 text-xs text-stone-600 tabular-nums">{g * 100}%</span>
           </div>
         ))}
         {week.map((d, i) => (

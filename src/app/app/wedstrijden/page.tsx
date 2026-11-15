@@ -12,6 +12,7 @@ import { CATEGORY_META, ROOM_ROLE_META } from "@/lib/meta";
 import { autoAssignRooms, autoPlanMatchFields, demandKey, generateDuties, optimizeKickoffs, roomDemandsForDate, sectionsLabel } from "@/lib/planning";
 import { uid } from "@/lib/seed";
 import { useLookups, useStore } from "@/lib/store";
+import { plural } from "@/lib/text";
 import { cap, fmtTime, formatDate, parseTime, todayISO } from "@/lib/time";
 import type { AppData, Match } from "@/lib/types";
 
@@ -164,8 +165,8 @@ export default function WedstrijdenPage() {
               const rooms = data.roomAssignments.filter((a) => a.matchId === m.id);
               const cancelled = m.status === "afgelast";
               return (
-                <div key={m.id} className={cn("flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center", cancelled && "bg-stone-50")}>
-                  <div className="flex items-center gap-4 md:w-[45%]">
+                <div key={m.id} className={cn("flex flex-col gap-3 px-4 py-3 xl:flex-row xl:items-center", cancelled && "bg-stone-50")}>
+                  <div className="flex items-center gap-4 xl:w-[42%]">
                     <div className="w-14 shrink-0 text-center">
                       <p className={cn("text-lg font-bold tabular-nums", cancelled && "text-stone-500 line-through")}>{fmtTime(m.kickoff)}</p>
                       <p className={cn("text-[11px] font-semibold uppercase", m.home ? "text-brand-700" : "text-orange-700")}>{m.home ? "Thuis" : "Uit"}</p>
@@ -342,7 +343,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       wide
       onClose={onClose}
       title="Programma plakken"
-      footer={<Button variant="primary" disabled={!valid.length} onClick={importAll}>{valid.length} wedstrijd(en) importeren</Button>}
+      footer={<Button variant="primary" disabled={!valid.length} onClick={importAll}>{plural(valid.length, "wedstrijd", "wedstrijden")} toevoegen</Button>}
     >
       <p className="mb-3 text-sm text-stone-600">
         Plak het programma uit Sportlink, de KNVB-app of Excel. Eén wedstrijd per regel: <code className="rounded bg-stone-100 px-1">datum;tijd;thuisteam;uitteam</code>. We herkennen je eigen teams aan de clubnaam <b>{data.club.shortName}</b>.

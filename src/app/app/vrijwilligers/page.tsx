@@ -93,9 +93,10 @@ export default function VrijwilligersPage() {
                   const team = d.teamId ? lookups.team.get(d.teamId) : undefined;
                   const filled = !!(d.person || d.teamId);
                   return (
-                    <div key={d.id} className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-2 px-4 py-3 sm:px-5 lg:grid-cols-[120px_1fr_190px_190px_auto]">
+                    <div key={d.id} className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-2 px-4 py-3 sm:px-5 lg:grid-cols-[136px_1fr_190px_190px_auto]">
                       <div className="lg:contents">
                         <span className="flex items-center gap-2 text-base font-semibold tabular-nums lg:text-sm">
+                          <span className={cn("hidden h-2.5 w-2.5 shrink-0 rounded-full lg:block", filled ? "bg-brand-500" : "bg-red-500")} title={filled ? "Ingevuld" : "Open dienst"} />
                           {fmtTime(d.start)}–{fmtTime(d.end)}
                           <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold lg:hidden", filled ? "bg-brand-50 text-brand-800" : "bg-red-100 text-red-800")}>{filled ? "Ingevuld" : "Open"}</span>
                         </span>

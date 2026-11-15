@@ -2,7 +2,7 @@
 
 import { AlertTriangle, ChevronRight, ClipboardCopy, DoorOpen, List, Plus, Printer, Rows3, Settings, ShowerHead, Users, Wand2 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useSelectedDate } from "@/components/app-shell";
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, CardHeader, cn, DateNavigator, EmptyState, FormField, Input, Modal, PageHeader, Segmented, Select } from "@/components/ui";
@@ -13,7 +13,9 @@ import { useStore } from "@/lib/store";
 import { fmtTime, formatDate, overlaps, parseTime } from "@/lib/time";
 import type { RoomAssignment, RoomRole } from "@/lib/types";
 
-const PX = 1.6;
+const MIN_PX = 1; // pixels per minute; the bar stretches to fill the available width
+const LABEL = 216;
+const PAD = 28; // room for the last hour label
 const ROW = 58;
 
 export default function KleedkamersPage() {
@@ -110,7 +112,7 @@ export default function KleedkamersPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+        <div className={cn("grid grid-cols-1 gap-4", view === "lijst" && "xl:grid-cols-[1fr_320px]")}>
           {data.rooms.length === 0 ? (
             <Card>
               <EmptyState
@@ -144,7 +146,8 @@ export default function KleedkamersPage() {
           </Card>
           )}
 
-          <div className={cn("grid content-start gap-4", open.length > 0 && "order-first xl:order-none")}>
+          {/* The time bar gets the full width; its side panels move below it */}
+          <div className={cn("grid content-start items-start gap-4", view === "tijdbalk" && "md:grid-cols-2", open.length > 0 && "order-first", open.length > 0 && view === "lijst" && "xl:order-none")}>
             <Card className={cn(open.length > 0 && "border-amber-300")}>
               <CardHeader title="Nog in te delen" subtitle={open.length ? `${open.length} ${open.length === 1 ? "team heeft" : "teams hebben"} nog geen kleedkamer` : "Iedereen heeft een plek"} />
               <div className="divide-y divide-stone-100">
@@ -255,6 +258,16 @@ function Gantt({ range, assignments, conflictIds, onOpen, onMove }: {
   const body = useRef<HTMLDivElement>(null);
   const handled = useRef(false);
   const [drag, setDrag] = useState<{ a: RoomAssignment; y0: number; dy: number; moved: boolean; row: number } | null>(null);
+  // Fit the whole day in view when there is room; scroll sideways only on narrow screens
+  const [avail, setAvail] = useState(0);
+  const measure = useRef<ResizeObserver | null>(null);
+  const scroller = useCallback((el: HTMLDivElement | null) => {
+    measure.current?.disconnect();
+    if (!el) return;
+    measure.current = new ResizeObserver(([entry]) => setAvail(Math.round(entry.contentRect.width)));
+    measure.current.observe(el);
+  }, []);
+  const PX = Math.max(MIN_PX, (avail - LABEL - PAD) / (range.to - range.from));
   const width = (range.to - range.from) * PX;
   const hours: number[] = [];
   for (let h = range.from; h <= range.to; h += 60) hours.push(h);
@@ -267,10 +280,10 @@ function Gantt({ range, assignments, conflictIds, onOpen, onMove }: {
   const targetRoom = drag?.moved ? data.rooms[Math.max(0, Math.min(data.rooms.length - 1, drag.row))] : undefined;
 
   return (
-    <div className="scrollbar-thin overflow-x-auto">
-      <div className="min-w-max select-none" style={{ width: width + 190 }}>
+    <div ref={scroller} className="scrollbar-thin overflow-x-auto">
+      <div className="min-w-max select-none" style={{ width: width + LABEL + PAD }}>
         <div className="flex border-b border-stone-200 bg-white">
-          <div className="sticky left-0 z-20 w-[190px] shrink-0 bg-white px-4 py-2 text-xs font-semibold tracking-wider text-stone-500 uppercase">Kleedkamer</div>
+          <div className="sticky left-0 z-20 w-[216px] shrink-0 bg-white px-4 py-2 text-xs font-semibold tracking-wider text-stone-500 uppercase">Kleedkamer</div>
           <div className="relative h-8" style={{ width }}>
             {hours.map((h) => (
               <span key={h} className={cn("absolute top-2 text-xs text-stone-500 tabular-nums", h > range.from && "-translate-x-1/2")} style={{ left: (h - range.from) * PX + (h === range.from ? 4 : 0) }}>{fmtTime(h)}</span>
@@ -295,7 +308,7 @@ function Gantt({ range, assignments, conflictIds, onOpen, onMove }: {
             const isTarget = targetRoom?.id === room.id && targetRoom.id !== drag?.a.roomId;
             return (
               <div key={room.id} className={cn("flex border-b border-stone-100", isTarget && "bg-brand-50")} style={{ height: ROW }}>
-                <div className="sticky left-0 z-10 flex w-[190px] shrink-0 items-center gap-2.5 border-r border-stone-100 bg-white px-4">
+                <div className="sticky left-0 z-10 flex w-[216px] shrink-0 items-center gap-2.5 border-r border-stone-100 bg-white px-4">
                   <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", room.kind === "scheidsrechter" ? "bg-stone-800 text-white" : "bg-brand-50 text-brand-700")}>
                     {room.kind === "scheidsrechter" ? <ShowerHead size={16} /> : <DoorOpen size={16} />}
                   </div>
